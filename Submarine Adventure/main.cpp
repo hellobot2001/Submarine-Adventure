@@ -8,15 +8,38 @@
 using namespace std;
 
 //list of tiles. mostly for copy pasting, i doubt ill ever uncomment it
-//string tiles[8] = { "██", "▓▓", "▒▒", "░░", "  ", "??", "  ", "██" };
+//string tiles[8] = { "██", "▓▓", "▒▒", "░░", "  ", "??", "$>", "$<",  };
 //RAND_MAX
 
+class tile
+{
+private:
+    int seed;
+    int shape;
+public:
+    string text = "";
+    bool sell = false;
+    bool buy = false;
+    bool walkable = false;
+    tile(int s, int h)
+    {
+        shape = h;
+        seed = s;
+    }
 
+    vector<vector<tile>> gen()
+    {
+        
+    }
+};
 
-//line of code I stole from my "world" project
-vector<vector<double>> world;
+//what's this?? a 3D VECTOR!?!
+//functions like level of detail
+//a vector of 2D vectors, with the 2D vectors being square and the vector of those 2D vectors having a length equal to your current depth
+//a 3x3 square is generated based on their respective tiles' seeds, which in turn give a bunch of tiles their own seeds
+//I might need to give up on this for now...
+vector<vector<vector<tile>>> world = { { {} } }; 
 
-int depth = 0;
 int X = 0;
 int Y = 0;
 double money = 0;
@@ -68,27 +91,49 @@ void rgbTest()
     }
 }
 
-class tile
+void setTile(int d, int x, int y, tile t)
 {
-private:
-    int seed;
-    string shape;
-public:
-    string vis = "";
-    bool walkable = false;
-    tile(int s, string h)
+    world[d][x][y] = t;
+}
+
+void line(int d, int x1, int y1, int x2, int y2, tile t)
+{
+    int dx = x2 - x1;
+    int dy = y2 - y1;
+
+    int steps = max(abs(dx), abs(dy));
+
+    if (steps == 0)
     {
-        shape = h;
-        seed = s;
+        setTile(d, x1, y1, t);
+        return;
     }
-};
+
+    double xInc = (double)dx / steps;
+    double yInc = (double)dy / steps;
+    
+
+    double x = x1;
+    double y = y1;
+
+    for (int i = 0; i <= steps; i++)
+    {
+        int currentX = floor(x);
+        int currentY = floor(y);
+
+        if (currentX >= 0 && currentX < 48)
+        {
+            setTile(d, currentX, currentY, t);
+        }
+
+        x += xInc;
+        y += yInc;
+    }
+}
 
 int main()
 {
     srand(start);
-    int size;
-    cin >> size;
-    world = vector(size, vector<double>(size, 0));
     SetConsoleOutputCP(CP_UTF8);
     rgbTest();
 }
