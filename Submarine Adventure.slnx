@@ -1,0 +1,7 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="Submarine Adventure/Submarine Adventure.vcxproj" Id="41538f47-d046-48f4-9bd7-e6800a34ecc7" />
+</Solution>
