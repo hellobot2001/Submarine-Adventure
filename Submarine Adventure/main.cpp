@@ -4,6 +4,7 @@
 #include <cassert>
 #include <cmath>
 #include <windows.h>
+#include <conio.h>
 
 using namespace std;
 
@@ -15,21 +16,32 @@ class tile
 {
 private:
     int seed;
-    int shape;
+    string shape;
 public:
     string text = "";
     bool sell = false;
     bool buy = false;
-    bool walkable = false;
-    tile(int s, int h)
+    bool walkable = true;
+    tile(int s, string h)
     {
         shape = h;
         seed = s;
     }
 
-    vector<vector<tile>> gen()
+    tile()
     {
-        
+        shape = "  ";
+        seed = rand();
+    }
+
+    int getSeed()
+    {
+        return seed;
+    }
+
+    string getShape()
+    {
+        return shape;
     }
 };
 
@@ -39,6 +51,10 @@ public:
 //a 3x3 square is generated based on their respective tiles' seeds, which in turn give a bunch of tiles their own seeds
 //I might need to give up on this for now...
 vector<vector<vector<tile>>> world = { { {} } }; 
+
+//temp regular world of size num
+int num = 256;
+vector<vector<tile>> sworld = vector<vector<tile>>(num, vector<tile>(num, tile()));
 
 int X = 0;
 int Y = 0;
@@ -91,9 +107,29 @@ void rgbTest()
     }
 }
 
-void setTile(int d, int x, int y, tile t)
+void setTile(double c, int d, int x, int y, tile t)
 {
+    if (c < rand()/(double)RAND_MAX)
     world[d][x][y] = t;
+}
+
+int fancyMod(int x, int y)
+{
+    if (x < 0 && y > 0)
+    {
+        return fancyMod(y + x, y);
+    }
+    else
+        return x % y;
+}
+void setTile(vector<vector<tile>>& w, double c, int x, int y, tile t)
+{
+    //cout << "    create tile at (" << x << ", " << y << ") with chance " << c*100 << "%" << endl;
+    if (c < rand() / (double)RAND_MAX)
+    {
+        w[fancyMod(x, num)][fancyMod(y, num)] = t;
+        //cout << "        tile made! " << w[x][y].getShape() << endl;
+    }
 }
 
 void line(int d, int x1, int y1, int x2, int y2, tile t)
@@ -105,7 +141,7 @@ void line(int d, int x1, int y1, int x2, int y2, tile t)
 
     if (steps == 0)
     {
-        setTile(d, x1, y1, t);
+        setTile(1, d, x1, y1, t);
         return;
     }
 
@@ -123,7 +159,7 @@ void line(int d, int x1, int y1, int x2, int y2, tile t)
 
         if (currentX >= 0 && currentX < 48)
         {
-            setTile(d, currentX, currentY, t);
+            setTile(1, d, currentX, currentY, t);
         }
 
         x += xInc;
@@ -131,11 +167,146 @@ void line(int d, int x1, int y1, int x2, int y2, tile t)
     }
 }
 
+void genCircle(vector<vector<tile>>& w, int x, int y, int r, double ci, double co, tile t) //world, start x, start y, radius, inner chance, outer chance, tile
+{
+    int px = x - r;
+    int py = y - r;
+    for (int i = 0; i < (2 * r) + 1; i++)
+    {
+        for (int f = 0; f < (2 * r) + 1; f++)
+        {
+            double d = sqrt(((px + i - x) * (px + i - x)) + ((py + f - y) * (py + f - y)));
+            if (((px + i > 0) && (py + f > 0)) && ((px + i < num) && (py + f < num)))
+            {
+                if (d <= r)
+                {
+                    double cot = ((d * co) / r) + ((1 - (d / r)) * ci);
+                    setTile(w, cot, (px + i), (py + f), t);
+                }
+            }
+        }
+        py = y - r;
+    }
+}
+
+void genPath(vector<vector<tile>>& w, int nr, int xr, int jmp, int l, double ci, double co, tile t) //world, min radius, max radius, max jump distance, # of circles created, inner chance, outer chance, tile
+{
+    int sx = rand() % num;
+    int sy = rand() % num;
+    for (int i = 0; i < l; i++)
+    {
+        genCircle(w, sx, sy, (rand() % (xr - nr)) + nr, ci, co, t);
+        sx = (sx + (rand() % ((2 * jmp) + 1)) - jmp) % num; //jumps anywhere in a square of +- jmp
+        sy = (sy + (rand() % ((2 * jmp) + 1)) - jmp) % num;
+    }
+}
+
+void printWorld()
+{
+    //cout << "print:" << endl;
+    for (int i = 0; i < num; i++)
+    {
+        for (int f = 0; f < num; f++)
+        {
+            cout << sworld[i][f].getShape();
+        }
+        cout << endl;
+    }
+    cout << endl;
+}
+
+void printVisible(vector<vector<tile>>& w, int s) //world, sight radius
+{
+    //cout << "print visible";
+    X = fancyMod(X, num);
+    Y = fancyMod(Y, num);
+    cout << "(" << X+1 << ", " << Y << ")" << endl;
+    for (int i = 0; i < (2 * s) + 1; i++)
+    {
+        for (int f = 0; f < (2 * s) + 1; f++)
+        {
+            double d = sqrt(((s - i) * (s - i)) + ((s - f) * (s - f)));
+            if (d == 0)
+                cout << "웃";
+            else if (d < s)
+                cout << w[fancyMod((X + i - s), num)][fancyMod((Y + f - s), num)].getShape();
+            else
+                cout << "▒▒";
+        }
+        cout << endl;
+    }
+}
+
 int main()
 {
     srand(start);
+    X = num / 2;
+    Y = num / 2;
+    while (!sworld[X][Y].walkable)
+    {
+        //cout << "(" << X << ", " << Y << ")" << endl;
+        X = rand() % num;
+        Y = rand() % num;
+    }
+    //cout << rand() << endl;
     SetConsoleOutputCP(CP_UTF8);
-    rgbTest();
+    //while (true)
+    //{
+        int seed = 10;
+        /*out << "enter seed, or 0 to stop or -1 to draw one big circle: ";
+        cin >> seed;
+        cout << seed;
+        if (seed == 0)
+        {
+            break;
+        }*/
+        tile t = tile(rand(), "██");
+        //if (seed > 0)
+        //{
+            srand(seed);
+            srand(rand());
+            srand(rand());
+            srand(rand());
+            srand(rand());
+            srand(rand());
+            srand(rand());
+            double irand = rand();
+            double drand = irand / (double)RAND_MAX;
+            //cout << irand << "/" << RAND_MAX << " = " << drand << endl;
+            for (int i = 0; i < (int)(pow(log2(num), 2 + drand)); i++)
+            {
+                //cout << i << endl;
+                t = tile(rand(), "██");
+                t.walkable = false;
+                genPath(sworld, rand() % 3, (rand() % 8) + 3, rand() % 8, 50, 0, 1, t);
+            }
+        //}
+        //else genCircle(sworld, num/2, num/2, num/2 - 1, 0, 1, t);
+            printVisible(sworld, 6);
+            while (true)
+            {
+                //cout << "move (wasd): ";
+                char c;
+                if (_kbhit())
+                {
+                    c = _getch();
+                    //cin >> c;
+                    if (c == 'w' && sworld[fancyMod((X - 1), num)][Y].walkable)
+                        X--;
+                    if (c == 's' && sworld[fancyMod((X + 1), num)][Y].walkable)
+                        X++;
+                    if (c == 'a' && sworld[X][fancyMod((Y - 1), num)].walkable)
+                        Y--;
+                    if (c == 'd' && sworld[X][fancyMod((Y + 1), num)].walkable)
+                        Y++;
+                    system("cls");
+                    printVisible(sworld, 6);
+                    Sleep(10);
+                }
+            }
+        
+        //sworld = vector<vector<tile>>(num, vector<tile>(num, tile()));
+    //}
 }
 
 /*
