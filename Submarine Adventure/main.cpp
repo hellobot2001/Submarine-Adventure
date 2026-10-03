@@ -22,6 +22,7 @@ public:
     bool sell = false;
     bool buy = false;
     bool walkable = true;
+    bool tr = false;
     tile(int s, string h)
     {
         shape = h;
@@ -44,7 +45,37 @@ public:
         return shape;
     }
 };
+//funny random metal name generation because funny
+string matStart[102] = { "Pyro", "Keki", "Cryo", "Bio", "Ura", "Hydro", "Hel", "Oxy", "Rhod", "Rad", "Franc", "Lith", "Beryl", "Tung", "Merc", "Moly", "Poly", "Bi", "Tita", "Carbo", "Alum", "Gall", "Osm", "Irid", "Tant", "Plat", "Lead", "Polo", "Iron", "Photo", "Vita", "Carb", "Pallad", "Sil", "Mecha", "Fort", "Anti", "Trans", "Commu", "Reallyhard", "Orich", "Cob", "Mith", "Myth", "Ada", "Lumin", "Aura", "Crim", "Demon", "Meteor", "Stellar", "Astral", "Thermo", "Tempo", "Manta", "Terra", "Tarra", "Aero", "Aerial", "Peren", "Aqua", "Scor", "Exod", "Nept", "Naut", "Mater", "Voca", "Vox", "Neo", "Signal", "Lum", "Ender", "Prom", "F", "Naqu", "Admin", "Endo", "Extra", "Ultra", "Super", "Vibra", "Aether", "Chemo", "Ferro", "Hema", "Krypto", "Crypto", "Di", "Dura", "Lunar", "Nan", "Nether", "End", "Quant", "Red", "Tele", "San", "Sea", "Tiber", "Trit", "Unob", "Thaum" };
 
+string matMiddle[22] = { "al", "in", "synth", "bde", "l", "a", "man", "un", "eth", "uck", "ah", "istrat", "therm", "kill", "carn", "lith", "ill", "de", "o", "ston", "tai", "ver"};
+
+string matEnd[40] = { "cyte", "cite", "ic", "nite", "gen", "lium", "nium", "ium", "ury", "num", "lite", "osm", "sten", "ten", "n", "on", "con", "icon", "form", "alcum", "alt", "ril", "il", "tite", "ite", "tane", "ia", "ine", "line", "le", "mory", "vox", "ing", "dah", "tine", "t", "ide", "matter", "er", "e"};
+
+class treasure
+{
+private:
+    string name;
+    double value;
+public:
+    treasure()
+    {
+        value = (rand() / (double)RAND_MAX) * 100;
+        setName();
+    }
+
+    void setName()
+    {
+        name = name + matStart[rand() % 102];
+        name = name + matMiddle[rand() % 22];
+        name = name + matEnd[rand() % 40];
+    }
+
+    string getName()
+    {
+        return name;
+    }
+};
 //what's this?? a 3D VECTOR!?!
 //functions like level of detail
 //a vector of 2D vectors, with the 2D vectors being square and the vector of those 2D vectors having a length equal to your current depth
@@ -59,6 +90,8 @@ vector<vector<tile>> sworld = vector<vector<tile>>(num, vector<tile>(num, tile()
 int X = 0;
 int Y = 0;
 double money = 0;
+
+vector<treasure> treasureList;
 
 //list of characters that can appear in scatter tiles.
 string scatter[40] = { " ", " ", " ", "⠁", "⡀", "⠂", "⢀", "⠄", "⠈", "⠐", "⠠", "⠃", "⠅", "⠆", "⠊", "⠌",  "⠑", "⠔", "⠘", "⠡", "⠢", "⠨", "⠰", "⡁", "⡂", "⡄", "⡈", "⡐", "⡠", "⢀", "⢁", "⢂", "⢄", "⢈", "⢐", "⢠", "⠒", "⠤", "⠉", "⣀" };
@@ -237,6 +270,14 @@ void printVisible(vector<vector<tile>>& w, int s) //world, sight radius
     }
 }
 
+void printTreasures()
+{
+    for (int i = 0; i < treasureList.size(); i++)
+    {
+        cout << treasureList[i].getName() << endl;
+    }
+}
+
 int main()
 {
     srand(start);
@@ -252,7 +293,7 @@ int main()
     SetConsoleOutputCP(CP_UTF8);
     //while (true)
     //{
-        int seed = 10;
+        int seed = rand();
         /*out << "enter seed, or 0 to stop or -1 to draw one big circle: ";
         cin >> seed;
         cout << seed;
@@ -280,6 +321,22 @@ int main()
                 t.walkable = false;
                 genPath(sworld, rand() % 3, (rand() % 8) + 3, rand() % 8, 50, 0, 1, t);
             }
+            irand = rand();
+            drand = irand / (double)RAND_MAX;
+            for (int i = 0; i < (int)(pow(log2(num), 2 + drand)); i++)
+            {
+                int rx = rand() % num;
+                int ry = rand() % num;
+                while (!sworld[rx][ry].walkable || sworld[rx][ry].tr)
+                {
+                    rx = rand() % num;
+                    ry = rand() % num;
+                }
+                t = tile(rand(), "!!");
+                t.tr = true;
+                sworld[rx][ry] = t;
+            }
+            cout << "wasd to move, t to see treasures, q to return to surface (only around your spawnpoint). p to quit." << endl;
         //}
         //else genCircle(sworld, num/2, num/2, num/2 - 1, 0, 1, t);
             printVisible(sworld, 6);
@@ -300,7 +357,16 @@ int main()
                     if (c == 'd' && sworld[X][fancyMod((Y + 1), num)].walkable)
                         Y++;
                     system("cls");
+                    if (sworld[fancyMod(X, num)][fancyMod(Y, num)].tr)
+                    {
+                        treasureList.push_back(treasure());
+                        sworld[X][Y] = tile(rand(), "..");
+                    }
                     printVisible(sworld, 6);
+                    if (c == 't')
+                    {
+                        printTreasures();
+                    }
                     Sleep(10);
                 }
             }
