@@ -391,7 +391,7 @@ void printO2()
 void subControl(char c)
 {
     cout << "\033[2J\033[1;1H";
-    cout << "move: [wasd] | inspect: [i] | list treasure: [t] | surface (if at top of ocean): [q] | quit: [p]" << endl;
+    cout << "move: [wasd] | inspect: [i] | list treasure: [t] | surface: [q] | quit: [p]" << endl;
     if (c == 'w')
         if (sworld[fancyMod((X - 1), num)][Y].walkable && X > 0)
         {
@@ -494,6 +494,7 @@ void shopControl(char c)
 
 int main()
 {
+    cout << "inspecting (i) your environment allows you to find hidden treasures (denoted by '!!') !" << endl << "surfacing (q) refills air and sells all treasure you have accumilated!" << endl << "your submarine can't move or inspect until it has begun it's descent (q)." << endl;
     srand(start);
     SetConsoleOutputCP(CP_UTF8);
     regen();
