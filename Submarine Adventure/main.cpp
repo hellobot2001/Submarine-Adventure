@@ -4,7 +4,7 @@
 #include <cassert>
 #include <cmath>
 #include <windows.h>
-#include <conio.h>
+//#include <conio.h>
 
 using namespace std;
 
@@ -19,8 +19,6 @@ private:
     string shape;
 public:
     string text = "";
-    bool sell = false;
-    bool buy = false;
     bool walkable = true;
     bool tr = false;
     tile(int s, string h)
@@ -75,6 +73,11 @@ public:
     {
         return name;
     }
+
+    double getValue()
+    {
+        return value;
+    }
 };
 //what's this?? a 3D VECTOR!?!
 //functions like level of detail
@@ -86,10 +89,19 @@ vector<vector<vector<tile>>> world = { { {} } };
 //temp regular world of size num
 int num = 256;
 vector<vector<tile>> sworld = vector<vector<tile>>(num, vector<tile>(num, tile()));
+vector<vector<tile>> tworld = vector<vector<tile>>(num, vector<tile>(num, tile()));
 
 int X = 0;
 int Y = 0;
+int cX = 0;
+int cY = 0;
 double money = 0;
+
+int maxO2 = 100;
+int O2 = 100;
+
+int attempts = 0;
+bool sub = false;
 
 vector<treasure> treasureList;
 
@@ -105,7 +117,15 @@ string rgb(int r, int g, int b, string str)
     r = max(min(r, 255), 0);
     g = max(min(g, 255), 0);
     b = max(min(b, 255), 0);
-    return "\033[0;38;2;" + to_string(r) + ";" + to_string(g) + ";" + to_string(b) + ";49m" + str + "\033[m";
+    return "\033[0;38;2;" + to_string(r) + ";" + to_string(g) + ";" + to_string(b) + "m" + str + "\033[m";
+}
+
+string rgbackground(int r, int g, int b, string str)
+{
+    r = max(min(r, 255), 0);
+    g = max(min(g, 255), 0);
+    b = max(min(b, 255), 0);
+    return "\033[0;48;2;" + to_string(r) + ";" + to_string(g) + ";" + to_string(b) + "m" + str + "\033[m";
 }
 
 //return a scatter tile.
@@ -119,7 +139,8 @@ string scatterTile(int seed)
 {
     srand(seed);
     int i = floor(pow(rand() % 40, 3) / 1600.0);
-    return scatter[i] + scatter[i];
+    int f = floor(pow(rand() % 40, 3) / 1600.0);
+    return scatter[i] + scatter[f];
 }
 
 //print out a variety of rgb scatter tiles.
@@ -234,6 +255,57 @@ void genPath(vector<vector<tile>>& w, int nr, int xr, int jmp, int l, double ci,
     }
 }
 
+void regen()
+{
+    sworld = vector<vector<tile>>(num, vector<tile>(num, tile()));
+    attempts++;
+    X = 0;
+    Y = num / 2;
+    int seed = rand();
+    tile t;
+    srand(seed + attempts);
+    double irand = rand();
+    double drand = irand / (double)RAND_MAX;
+    for (int i = 0; i < (int)(pow(log2(num), 1.75 + drand)); i++)
+    {
+        t = tile(rand(), "██");
+        t.walkable = false;
+        genPath(sworld, rand() % 3, (rand() % 8) + 3, rand() % 8, 50, 0, 1, t);
+    }
+    irand = rand();
+    drand = irand / (double)RAND_MAX;
+    for (int i = 0; i < (int)(pow(log2(num), 2 + drand)); i++)
+    {
+        int rx = rand() % num;
+        int ry = rand() % num;
+        while (!sworld[rx][ry].walkable || sworld[rx][ry].tr)
+        {
+            rx = rand() % num;
+            ry = rand() % num;
+        }
+        t = tile(rand(), "!!");
+        t.tr = true;
+        tworld[rx][ry] = t;
+    }
+    for (int i = 0; i < num; i++)
+    {
+        sworld[0][i] = tile(rand(), "~~");
+    }
+    while (!sworld[X][Y].walkable)
+    {
+        Y = rand() % num;
+    }
+}
+
+void ascend()
+{
+    O2 = maxO2;
+    sub = false;
+    for (int i = 0; i < treasureList.size(); i++)
+        money += treasureList[i].getValue();
+    treasureList = vector<treasure>();
+}
+
 void printWorld()
 {
     //cout << "print:" << endl;
@@ -250,19 +322,27 @@ void printWorld()
 
 void printVisible(vector<vector<tile>>& w, int s) //world, sight radius
 {
-    //cout << "print visible";
-    X = fancyMod(X, num);
-    Y = fancyMod(Y, num);
-    cout << "(" << X+1 << ", " << Y << ")" << endl;
+    cout << "(" << X << ", " << Y << ")" << endl;
+    if (X < num - s)
+        cX = X;
+    if (Y > s - 1 && Y < num - s)
+        cY = Y;
     for (int i = 0; i < (2 * s) + 1; i++)
     {
         for (int f = 0; f < (2 * s) + 1; f++)
         {
-            double d = sqrt(((s - i) * (s - i)) + ((s - f) * (s - f)));
+            int dY = Y - cY;
+            int dX = X - cX;
+            double d = sqrt(((s - i + dX) * (s - i + dX)) + ((s - f + dY) * (s - f + dY)));
             if (d == 0)
-                cout << "웃";
+                cout << "cↄ";
             else if (d < s)
-                cout << w[fancyMod((X + i - s), num)][fancyMod((Y + f - s), num)].getShape();
+                if (cX + i - s >= 0 && cX + i - s < num && cY + f - s >= 0 && cY + f - s < num)
+                    cout << w[fancyMod((cX + i - s), num)][fancyMod((cY + f - s), num)].getShape();
+                else if (cX + i - s < 0)
+                    cout << "  ";
+                else
+                    cout << "▒▒";
             else
                 cout << "▒▒";
         }
@@ -274,102 +354,165 @@ void printTreasures()
 {
     for (int i = 0; i < treasureList.size(); i++)
     {
-        cout << treasureList[i].getName() << endl;
+        cout << treasureList[i].getName() << ": \033[38;2;255;215;0m" << treasureList[i].getValue() << "\033[m doubloons" << endl;
     }
+}
+
+void printO2()
+{
+    if (O2 >= maxO2 / 2)
+    {
+        int p = 510 * (1 - (O2 / (double)maxO2));
+        cout << "O2: \033[38;2;" << p << ";255;0m" << O2 << "/" << maxO2 << "\033[m" << endl;
+    }
+    else
+    {
+        int p = (510 * (O2 / (double)maxO2));
+        cout << "O2: \033[38;2;255;" << p << ";0m" << O2 << "/" << maxO2 << "\033[m" << endl;
+    }
+}
+void subControl(char c)
+{
+    cout << "\033[2J\033[1;1H";
+    cout << "move: [wasd] | inspect: [i] | list treasure: [t] | surface (if at top of ocean): [q] | quit: [p]" << endl;
+    if (c == 'w')
+        if (sworld[fancyMod((X - 1), num)][Y].walkable && X > 0)
+        {
+            X--;
+            if (X > 0 && sub)
+                O2--;
+            printO2();
+        }
+        else
+            cout << "can't go there!" << endl;
+    if (c == 's')
+        if (sworld[fancyMod((X + 1), num)][Y].walkable && X < num - 1)
+        {
+            X++;
+            if (X > 0 && sub)
+                O2--;
+            printO2();
+        }
+        else
+            cout << "can't go there!" << endl;
+    if (c == 'a')
+        if (sworld[X][fancyMod((Y - 1), num)].walkable && Y > 0)
+        {
+            Y--;
+            if (X > 0 && sub)
+                O2--;
+            printO2();
+        }
+        else
+            cout << "can't go there!" << endl;
+    if (c == 'd')
+        if (sworld[X][fancyMod((Y + 1), num)].walkable && Y < num - 1)
+        {
+            Y++;
+            if (X > 0 && sub)
+                O2--;
+            printO2();
+        }
+        else
+            cout << "can't go there!" << endl;
+    if (sworld[fancyMod(X, num)][fancyMod(Y, num)].tr)
+    {
+        treasureList.push_back(treasure());
+        sworld[fancyMod(X, num)][fancyMod(Y, num)] = tile(rand(), "..");
+    }
+    if (c == 'i')
+    {
+        int s = 6;
+        for (int i = 0; i < (2 * s) + 1; i++)
+        {
+            for (int f = 0; f < (2 * s) + 1; f++)
+            {
+                double d = sqrt(((s - i) * (s - i)) + ((s - f) * (s - f)));
+                if (d < s)
+                    if (X + i - s >= 0 && X + i - s < num && Y + f - s >= 0 && Y + f - s < num)
+                    {
+                        if (tworld[X + i - s][Y + f - s].tr)
+                        {
+                            sworld[X + i - s][Y + f - s] = tworld[X + i - s][Y + f - s];
+                            tworld[X + i - s][Y + f - s] = tile();
+                        }
+                    }
+            }
+        }
+    }
+    printVisible(sworld, 6);
+    if (c == 't')
+    {
+        printTreasures();
+    }
+    if (c == 'q' && X == 0)
+    {
+        ascend();
+        cout << "\033[2J\033[1;1H";
+        cout << "press q to descend, e to relocate, or p to quit." << endl;
+        cout << "you have \033[38;2;255;215;0m" << money << "\033[m doubloons." << endl;
+        printVisible(sworld, 6);
+    }
+}
+
+void shopControl(char c)
+{
+    cout << "\033[2J\033[1;1H";
+    cout << "press q to descend, e to relocate, or p to quit." << endl;
+    cout << "you have \033[38;2;255;215;0m" << money << "\033[m doubloons." << endl;
+    if (c == 'q')
+    {
+        sub = true;
+        subControl(' ');
+    }
+    else
+    {
+        if (c == 'e')
+            regen();
+        printVisible(sworld, 6);
+    }
+    
 }
 
 int main()
 {
+    cout << rgb(23, 48, 233, rgbackground(233, 23, 48, "hello")) << endl;
     srand(start);
-    X = num / 2;
-    Y = num / 2;
-    while (!sworld[X][Y].walkable)
-    {
-        //cout << "(" << X << ", " << Y << ")" << endl;
-        X = rand() % num;
-        Y = rand() % num;
-    }
-    //cout << rand() << endl;
     SetConsoleOutputCP(CP_UTF8);
-    //while (true)
-    //{
-        int seed = rand();
-        /*out << "enter seed, or 0 to stop or -1 to draw one big circle: ";
-        cin >> seed;
-        cout << seed;
-        if (seed == 0)
-        {
-            break;
-        }*/
-        tile t = tile(rand(), "██");
-        //if (seed > 0)
+    regen();
+    printWorld();
+    cout << "press q to descend, e to relocate, or p to quit." << endl;
+    cout << "you have \033[38;2;255;215;0m" << money << "\033[m doubloons." << endl;
+    printVisible(sworld, 6);
+    while (true)
+    {
+        cout << "action: ";
+        char c;
+        //if (_kbhit())
         //{
-            srand(seed);
-            srand(rand());
-            srand(rand());
-            srand(rand());
-            srand(rand());
-            srand(rand());
-            srand(rand());
-            double irand = rand();
-            double drand = irand / (double)RAND_MAX;
-            //cout << irand << "/" << RAND_MAX << " = " << drand << endl;
-            for (int i = 0; i < (int)(pow(log2(num), 2 + drand)); i++)
+            //c = _getch();
+            cin >> c;
+            if (sub)
+                subControl(c);
+            else
+                shopControl(c);
+            if (c == 'p')
+                break;
+            if (O2 <= 0)
             {
-                //cout << i << endl;
-                t = tile(rand(), "██");
-                t.walkable = false;
-                genPath(sworld, rand() % 3, (rand() % 8) + 3, rand() % 8, 50, 0, 1, t);
+                cout << "you ran out of oxygen and died." << endl;
+                cout << "enter anything to restart: ";
+                char k;
+                cin >> k;
+                money = 0;
+                regen();
+                ascend();
+                cout << "\033[2J\033[1;1H";
+                printVisible(sworld, 6);
             }
-            irand = rand();
-            drand = irand / (double)RAND_MAX;
-            for (int i = 0; i < (int)(pow(log2(num), 2 + drand)); i++)
-            {
-                int rx = rand() % num;
-                int ry = rand() % num;
-                while (!sworld[rx][ry].walkable || sworld[rx][ry].tr)
-                {
-                    rx = rand() % num;
-                    ry = rand() % num;
-                }
-                t = tile(rand(), "!!");
-                t.tr = true;
-                sworld[rx][ry] = t;
-            }
-            cout << "wasd to move, t to see treasures, q to return to surface (only around your spawnpoint). p to quit." << endl;
+            Sleep(10); //prevents output from going black when you make fast inputs
         //}
-        //else genCircle(sworld, num/2, num/2, num/2 - 1, 0, 1, t);
-            printVisible(sworld, 6);
-            while (true)
-            {
-                //cout << "move (wasd): ";
-                char c;
-                if (_kbhit())
-                {
-                    c = _getch();
-                    //cin >> c;
-                    if (c == 'w' && sworld[fancyMod((X - 1), num)][Y].walkable)
-                        X--;
-                    if (c == 's' && sworld[fancyMod((X + 1), num)][Y].walkable)
-                        X++;
-                    if (c == 'a' && sworld[X][fancyMod((Y - 1), num)].walkable)
-                        Y--;
-                    if (c == 'd' && sworld[X][fancyMod((Y + 1), num)].walkable)
-                        Y++;
-                    system("cls");
-                    if (sworld[fancyMod(X, num)][fancyMod(Y, num)].tr)
-                    {
-                        treasureList.push_back(treasure());
-                        sworld[X][Y] = tile(rand(), "..");
-                    }
-                    printVisible(sworld, 6);
-                    if (c == 't')
-                    {
-                        printTreasures();
-                    }
-                    Sleep(10);
-                }
-            }
+    }
         
         //sworld = vector<vector<tile>>(num, vector<tile>(num, tile()));
     //}
