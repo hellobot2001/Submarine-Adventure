@@ -104,7 +104,7 @@ int cY = 0;
 double money = 0;
 
 int maxO2 = 100;
-int O2 = 100;
+int O2 = maxO2;
 
 int attempts = 0;
 bool sub = false;
