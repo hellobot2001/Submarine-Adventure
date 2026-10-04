@@ -44,12 +44,15 @@ public:
     }
 };
 //funny random metal name generation because funny
+string state[19] = { "an unrecongnizable ", "a pulverized ", "a shattered ", "an ancient ", "a withered ", "a broken ", "an eroded ", "a decayed ", "an old ", "a rusty ", "a dull ", "a chipped ", "a scratched ", "a ", "an ok ", "a decent ", "an unused ", "a brand-new ", "a pristine " };
+
 string matStart[102] = { "Pyro", "Keki", "Cryo", "Bio", "Ura", "Hydro", "Hel", "Oxy", "Rhod", "Rad", "Franc", "Lith", "Beryl", "Tung", "Merc", "Moly", "Poly", "Bi", "Tita", "Carbo", "Alum", "Gall", "Osm", "Irid", "Tant", "Plat", "Lead", "Polo", "Iron", "Photo", "Vita", "Carb", "Pallad", "Sil", "Mecha", "Fort", "Anti", "Trans", "Commu", "Reallyhard", "Orich", "Cob", "Mith", "Myth", "Ada", "Lumin", "Aura", "Crim", "Demon", "Meteor", "Stellar", "Astral", "Thermo", "Tempo", "Manta", "Terra", "Tarra", "Aero", "Aerial", "Peren", "Aqua", "Scor", "Exod", "Nept", "Naut", "Mater", "Voca", "Vox", "Neo", "Signal", "Lum", "Ender", "Prom", "F", "Naqu", "Admin", "Endo", "Extra", "Ultra", "Super", "Vibra", "Aether", "Chemo", "Ferro", "Hema", "Krypto", "Crypto", "Di", "Dura", "Lunar", "Nan", "Nether", "End", "Quant", "Red", "Tele", "San", "Sea", "Tiber", "Trit", "Unob", "Thaum" };
 
 string matMiddle[22] = { "al", "in", "synth", "bde", "l", "a", "man", "un", "eth", "uck", "ah", "istrat", "therm", "kill", "carn", "lith", "ill", "de", "o", "ston", "tai", "ver"};
 
 string matEnd[40] = { "cyte", "cite", "ic", "nite", "gen", "lium", "nium", "ium", "ury", "num", "lite", "osm", "sten", "ten", "n", "on", "con", "icon", "form", "alcum", "alt", "ril", "il", "tite", "ite", "tane", "ia", "ine", "line", "le", "mory", "vox", "ing", "dah", "tine", "t", "ide", "matter", "er", "e"};
 
+string type[33] = { " hunk", " shortsword", " coin", " broadsword", " spear", " chain", " arrow head", " arrow", " ingot", " plate", " block", " nugget", " gear", " katana", " hammer", " pickaxe", " shovel", " scythe", " axe", " greataxe", " pole", " stick", " knife", " beam", " drill head", " bullet", " nail", " helmet", " cup", " bowl", " wire", " ball", " cannonball"};
 class treasure
 {
 private:
@@ -64,9 +67,12 @@ public:
 
     void setName()
     {
+        name = name + state[rand() % 19];
         name = name + matStart[rand() % 102];
+        if (rand() % 10 < 4)
         name = name + matMiddle[rand() % 22];
         name = name + matEnd[rand() % 40];
+        name = name + type[rand() % 33];
     }
 
     string getName()
@@ -418,6 +424,7 @@ void subControl(char c)
     if (sworld[fancyMod(X, num)][fancyMod(Y, num)].tr)
     {
         treasureList.push_back(treasure());
+        cout << "you got \033[38;2;255;215;0m" << treasureList[treasureList.size() - 1].getName() << "\033[m worth \033[38;2;255;215;0m" << treasureList[treasureList.size() - 1].getValue() << "\033[m doubloons!" << endl;
         sworld[fancyMod(X, num)][fancyMod(Y, num)] = tile(rand(), "..");
     }
     if (c == 'i')
@@ -476,11 +483,10 @@ void shopControl(char c)
 
 int main()
 {
-    cout << rgb(23, 48, 233, rgbackground(233, 23, 48, "hello")) << endl;
     srand(start);
     SetConsoleOutputCP(CP_UTF8);
     regen();
-    printWorld();
+    //printWorld();
     cout << "press q to descend, e to relocate, or p to quit." << endl;
     cout << "you have \033[38;2;255;215;0m" << money << "\033[m doubloons." << endl;
     printVisible(sworld, 6);
