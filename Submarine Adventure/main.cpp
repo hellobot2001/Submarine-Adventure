@@ -307,8 +307,19 @@ void ascend()
 {
     O2 = maxO2;
     sub = false;
+    double total = 0;
+    cout << "you have resurfaced.\nyour \033[38;2;50;215;50moxygen\033[m has been refilled.\nafter this descent, you got:" << endl;
     for (int i = 0; i < treasureList.size(); i++)
+    {
+        total += treasureList[i].getValue();
         money += treasureList[i].getValue();
+        cout << "\033[38;2;255;215;0m" << treasureList[i].getName() << "\033[m worth \033[38;2;255;215;0m" << treasureList[i].getValue() << "\033[m doubloons." << endl;
+    }
+    if (treasureList.size() == 0)
+    {
+        cout << "\033[38;2;255;215;0mnothing lmao\033[m" << endl;
+    }
+    cout << "total earnings this descent: +\033[38;2;255;215;0m" << total << "\033[m doubloons." << endl;
     treasureList = vector<treasure>();
 }
 
@@ -454,8 +465,8 @@ void subControl(char c)
     }
     if (c == 'q' && X == 0)
     {
-        ascend();
         cout << "\033[2J\033[1;1H";
+        ascend();
         cout << "press q to descend, e to relocate, or p to quit." << endl;
         cout << "you have \033[38;2;255;215;0m" << money << "\033[m doubloons." << endl;
         printVisible(sworld, 6);
