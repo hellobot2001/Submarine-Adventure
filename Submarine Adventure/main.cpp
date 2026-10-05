@@ -44,15 +44,16 @@ public:
     }
 };
 //funny random metal name generation because funny
-string state[19] = { "an unrecongnizable ", "a pulverized ", "a shattered ", "an ancient ", "a withered ", "a broken ", "an eroded ", "a decayed ", "an old ", "a rusty ", "a dull ", "a chipped ", "a scratched ", "a ", "an ok ", "a decent ", "an unused ", "a brand-new ", "a pristine " };
-
-string matStart[102] = { "Pyro", "Keki", "Cryo", "Bio", "Ura", "Hydro", "Hel", "Oxy", "Rhod", "Rad", "Franc", "Lith", "Beryl", "Tung", "Merc", "Moly", "Poly", "Bi", "Tita", "Carbo", "Alum", "Gall", "Osm", "Irid", "Tant", "Plat", "Lead", "Polo", "Iron", "Photo", "Vita", "Carb", "Pallad", "Sil", "Mecha", "Fort", "Anti", "Trans", "Commu", "Reallyhard", "Orich", "Cob", "Mith", "Myth", "Ada", "Lumin", "Aura", "Crim", "Demon", "Meteor", "Stellar", "Astral", "Thermo", "Tempo", "Manta", "Terra", "Tarra", "Aero", "Aerial", "Peren", "Aqua", "Scor", "Exod", "Nept", "Naut", "Mater", "Voca", "Vox", "Neo", "Signal", "Lum", "Ender", "Prom", "F", "Naqu", "Admin", "Endo", "Extra", "Ultra", "Super", "Vibra", "Aether", "Chemo", "Ferro", "Hema", "Krypto", "Crypto", "Di", "Dura", "Lunar", "Nan", "Nether", "End", "Quant", "Red", "Tele", "San", "Sea", "Tiber", "Trit", "Unob", "Thaum" };
-
-string matMiddle[22] = { "al", "in", "synth", "bde", "l", "a", "man", "un", "eth", "uck", "ah", "istrat", "therm", "kill", "carn", "lith", "ill", "de", "o", "ston", "tai", "ver"};
-
-string matEnd[40] = { "cyte", "cite", "ic", "nite", "gen", "lium", "nium", "ium", "ury", "num", "lite", "osm", "sten", "ten", "n", "on", "con", "icon", "form", "alcum", "alt", "ril", "il", "tite", "ite", "tane", "ia", "ine", "line", "le", "mory", "vox", "ing", "dah", "tine", "t", "ide", "matter", "er", "e"};
-
-string type[33] = { " hunk", " shortsword", " coin", " broadsword", " spear", " chain", " arrow head", " arrow", " ingot", " plate", " block", " nugget", " gear", " katana", " hammer", " pickaxe", " shovel", " scythe", " axe", " greataxe", " pole", " stick", " knife", " beam", " drill head", " bullet", " nail", " helmet", " cup", " bowl", " wire", " ball", " cannonball"};
+string state[20] = { "an unrecognizable ", "a pulverized ", "a shattered ", "a broken ", "a decayed ", "an eroded ", "a withered ", "an ancient ", "a rusty ", "an old ", "a chipped ", "a scratched ", "a dull ", "a ", "an ok ", "a decent ", "an unused ", "a brand-new ", "an intricate ", "a pristine " };
+double stateMultiplier[20] = { 0.05, 0.08, 0.12, 0.15, 0.20, 0.25, 0.35, 0.50, 0.65, 0.80, 1.00, 1.20, 1.40, 1.65, 2.00, 2.50, 3.20, 4.00, 5.00, 6.50 };
+string matStart[102] = { "Poly", "Bi", "Di", "Carb", "Carbo", "Lith", "Alum", "Iron", "Lead", "Photo", "Beryl", "Gall", "Cob", "Moly", "Tung", "Merc", "Rhod", "Osm", "Irid", "Tant", "Mecha", "Chemo", "Ferro", "Hema", "Fort", "Plat", "Pallad", "Dura", "Bio", "Aero", "Aerial", "Aqua", "Hydro", "Sea", "San", "Terra", "Tarra", "Vita", "Peren", "Oxy", "Hel", "Pyro", "Cryo", "Scor", "Nept", "Naut", "Keki", "Polo", "Ura", "Rad", "Franc", "F", "Commu", "Signal", "Mater", "Voca", "Vox", "Endo", "Sil", "Lum", "Lumin", "Aura", "Crim", "Lunar", "Manta", "Red", "Extra", "Trans", "Ultra", "Super", "Neo", "Reallyhard", "Thermo", "Tempo", "Tele", "Nan", "Trit", "Prom", "Quant", "Meteor", "Stellar", "Astral", "Exod", "Ender", "Tiber", "Krypto", "Crypto", "Naqu", "Anti", "Aether", "Nether", "End", "Vibra", "Thaum", "Orich", "Mith", "Myth", "Ada", "Unob", "Admin" };
+double matStartValue[102] = { 1.00, 1.05, 1.10, 1.15, 1.20, 1.25, 1.30, 1.35, 1.40, 1.50, 1.60, 1.70, 1.80, 1.90, 2.00, 2.15, 2.30, 2.45, 2.60, 2.75, 2.90, 3.10, 3.30, 3.50, 3.75, 4.00, 4.25, 4.50, 4.80, 5.10, 5.40, 5.70, 6.00, 6.40, 6.80, 7.20, 7.60, 8.00, 8.50, 9.00, 9.50, 10.0, 10.6, 11.2, 11.8, 12.5, 13.2, 14.0, 14.8, 15.6, 16.5, 17.5, 18.5, 19.5, 20.5, 21.5, 22.8, 24.1, 25.5, 27.0, 28.5, 30.0, 31.8, 33.6, 35.5, 37.5, 39.5, 42.0, 44.5, 47.0, 50.0, 53.0, 56.0, 60.0, 64.0, 68.0, 72.0, 77.0, 82.0, 87.0, 92.0, 98.0, 104.0, 110.0, 117.0, 125.0, 133.0, 142.0, 151.0, 160.0, 170.0, 181.0, 192.0, 204.0, 216.0, 228.0, 242.0, 256.0, 270.0, 285.0, 300.0, 320.0 };
+string matMiddle[22] = { "a", "o", "l", "al", "in", "un", "de", "lith", "therm", "ston", "tai", "ver", "man", "eth", "uck", "ill", "ah", "synth", "bde", "istrat", "carn", "kill" };
+double matMiddleBonus[22] = { 0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0, 6.5, 8.0, 10.0, 12.5, 15.0, 18.0, 22.0, 26.0, 31.0, 37.0, 43.0, 50.0, 60.0 };
+string matEnd[40] = { "e", "n", "t", "on", "le", "ic", "il", "ia", "ing", "con", "icon", "alcum", "alt", "ril", "ten", "sten", "num", "ium", "nium", "lium", "ury", "osm", "ite", "tite", "nite", "cite", "cyte", "lite", "ine", "line", "tine", "tane", "ide", "er", "gen", "form", "dah", "mory", "vox", "matter" };
+double matEndMultiplier[40] = { 1.00, 1.03, 1.06, 1.09, 1.12, 1.15, 1.18, 1.21, 1.24, 1.27, 1.30, 1.34, 1.38, 1.42, 1.46, 1.50, 1.55, 1.60, 1.65, 1.70, 1.75, 1.81, 1.87, 1.93, 2.00, 2.08, 2.16, 2.24, 2.33, 2.42, 2.52, 2.62, 2.73, 2.85, 2.97, 3.10, 3.24, 3.38, 3.54, 3.70 };
+string type[33] = { " nail", " coin", " arrow head", " stick", " wire", " nugget", " ball", " bullet", " knife", " cup", " bowl", " arrow", " hunk", " spear", " pole", " shortsword", " gear", " axe", " shovel", " pickaxe", " hammer", " katana", " chain", " broadsword", " scythe", " ingot", " cannonball", " drill head", " beam", " plate", " greataxe", " helmet", " block" };
+double typeExponent[33] = { 1.00, 1.04, 1.08, 1.12, 1.16, 1.20, 1.25, 1.30, 1.35, 1.40, 1.46, 1.52, 1.58, 1.64, 1.71, 1.78, 1.85, 1.92, 2.00, 2.08, 2.16, 2.25, 2.34, 2.43, 2.52, 2.61, 2.70, 2.79, 2.88, 2.98, 3.08, 3.18, 3.30 };
 class treasure
 {
 private:
@@ -61,18 +62,37 @@ private:
 public:
     treasure()
     {
-        value = (rand() / (double)RAND_MAX) * 100;
         setName();
+    }
+
+    int brand()
+    {
+        return (rand() * RAND_MAX) + rand();
+    }
+
+    int chance(int c, double n)
+    {
+        int r = brand();
+        int t = floor(pow(c, n));
+        return floor(pow(r % t, 1 / n));
     }
 
     void setName()
     {
-        name = name + state[rand() % 19];
-        name = name + matStart[rand() % 102];
+        int st = brand() % chance(20, 3);
+        int ms = brand() % chance(102, 3);
+        int mm = brand() % chance(22, 3);
+        int me = brand() % chance(40, 3);
+        int ty = brand() % chance(33, 3);
+        name = name + state[st];
+        name = name + matStart[ms];
         if (rand() % 10 < 4)
-        name = name + matMiddle[rand() % 22];
-        name = name + matEnd[rand() % 40];
-        name = name + type[rand() % 33];
+            name = name + matMiddle[mm];
+        else
+            mm = 0;
+        name = name + matEnd[me];
+        name = name + type[ty];
+        value = stateMultiplier[st] * pow((matStartValue[ms] + matMiddleBonus[mm]) * matEndMultiplier[me], typeExponent[ty]);
     }
 
     string getName()
@@ -101,7 +121,10 @@ int X = 0;
 int Y = 0;
 int cX = 0;
 int cY = 0;
+
 double money = 0;
+int quota = 1;
+const int quotaMultiplier = 100;
 
 int maxO2 = 100;
 int O2 = maxO2;
@@ -476,8 +499,6 @@ void subControl(char c)
 void shopControl(char c)
 {
     cout << "\033[2J\033[1;1H";
-    cout << "press q to descend, e to relocate, or p to quit." << endl;
-    cout << "you have \033[38;2;255;215;0m" << money << "\033[m doubloons." << endl;
     if (c == 'q')
     {
         sub = true;
@@ -486,7 +507,21 @@ void shopControl(char c)
     else
     {
         if (c == 'e')
+        {
+            if (money >= quota * quota * quotaMultiplier)
+            {
+                money -= quota * quota * quotaMultiplier;
+                quota++;
+            }
+            else
+            {
+                O2 = 0;
+                cout << "\033[38;2;200;0;0mYARRR YE BE SLEEPIN WITH THE FISHIESSS !!!!!\033[m" << endl;
+            }
             regen();
+        }
+        cout << "press q to descend, e to relocate, or p to quit." << endl;
+        cout << "you have \033[38;2;255;215;0m" << money << "\033[m doubloons, and you need \033[38;2;255;215;0m" << (quota * quota * quotaMultiplier) << "\033[m doubloons for your next quota." << endl;
         printVisible(sworld, 6);
     }
     
@@ -494,7 +529,31 @@ void shopControl(char c)
 
 int main()
 {
-    cout << "inspecting (i) your environment allows you to find hidden treasures (denoted by '!!') !" << endl << "surfacing (q) refills air and sells all treasure you have accumilated!" << endl << "your submarine can't move or inspect until it has begun it's descent (q)." << endl;
+    char k;
+    cout << "having been cast from your family as a child, you followed a life of crime." << endl;
+    cin >> k;
+    cout << "\033[2J\033[1;1H";
+    cout << "after being caught and sent to jail for the Nth time, you were to be given \033[38;2;200;0;0mCAPITAL PUNISHMENT\033[m." << endl;
+    cin >> k;
+    cout << "\033[2J\033[1;1H";
+    cout << "you were let off the hook this last time, however, on the condition that you worked for a shady gang of pirates to help them make \033[38;2;255;215;0mdoubloons\033[m." << endl;
+    cin >> k;
+    cout << "\033[2J\033[1;1H";
+    cout << "the best way you know how is to find \033[38;2;255;215;0mtreasures\033[m!" << endl;
+    cin >> k;
+    cout << "\033[2J\033[1;1H";
+    cout << "the pirates \033[38;2;200;0;0mwon't be going easy on you\033[m, however, and will take an amount equal to your current \033[38;2;255;215;0mquota\033[m every time you relocate." << endl;
+    cin >> k;
+    cout << "\033[2J\033[1;1H";
+    cout << "they will also take your money whenever your try to \033[38;2;255;215;0mupgrade\033[m your treasure hunting gear!" << endl;
+    cin >> k;
+    cout << "\033[2J\033[1;1H";
+    cout << "and if you don't have enough money to meet your \033[38;2;255;215;0mquota\033[m, the pirates will \033[38;2;200;0;0mfeed you to the fishes\033[m!" << endl;
+    cin >> k;
+    cout << "\033[2J\033[1;1H";
+    cout << "and so, with enough said, you hop in your rusty submarine to find some treasures." << endl;
+    cin >> k;
+    cout << "\033[2J\033[1;1H";
     srand(start);
     SetConsoleOutputCP(CP_UTF8);
     regen();
@@ -520,7 +579,6 @@ int main()
             {
                 cout << "you ran out of oxygen and died." << endl;
                 cout << "enter anything to restart: ";
-                char k;
                 cin >> k;
                 money = 0;
                 regen();
