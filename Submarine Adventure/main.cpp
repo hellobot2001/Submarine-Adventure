@@ -3,7 +3,9 @@
 #include <iostream>
 #include <cassert>
 #include <cmath>
+#ifdef WIN32
 #include <windows.h>
+#endif
 //#include <conio.h>
 
 using namespace std;
@@ -496,7 +498,9 @@ int main()
 {
     cout << "inspecting (i) your environment allows you to find hidden treasures (denoted by '!!') !" << endl << "surfacing (q) refills air and sells all treasure you have accumilated!" << endl << "your submarine can't move or inspect until it has begun it's descent (q)." << endl;
     srand(start);
+#ifdef WIN32
     SetConsoleOutputCP(CP_UTF8);
+#endif
     regen();
     //printWorld();
     cout << "press q to descend, e to relocate, or p to quit." << endl;
@@ -528,8 +532,10 @@ int main()
                 cout << "\033[2J\033[1;1H";
                 printVisible(sworld, 6);
             }
+#ifdef WIN32
             Sleep(10); //prevents output from going black when you make fast inputs
-        //}
+#endif
+            //}
     }
         
         //sworld = vector<vector<tile>>(num, vector<tile>(num, tile()));
