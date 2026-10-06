@@ -3,7 +3,7 @@
 #include <iostream>
 #include <cassert>
 #include <cmath>
-//#ifdef WIN64
+//#ifdef WIN32
 #include <windows.h>
 //#endif
 //#include <conio.h>
@@ -557,7 +557,9 @@ int main()
     cin >> k;
     cout << "\033[2J\033[1;1H";
     srand(start);
+#ifdef WIN32
     SetConsoleOutputCP(CP_UTF8);
+#endif
     regen();
     //printWorld();
     cout << "press q to descend, e to relocate, or p to quit." << endl;
