@@ -519,6 +519,7 @@ void shopControl(char c)
             {
                 O2 = 0;
                 cout << "\033[38;2;200;0;0mYARRR YE BE SLEEPIN WITH THE FISHIESSS !!!!!\033[m" << endl;
+                quota = 1;
             }
             regen();
         }
@@ -573,6 +574,7 @@ int main()
         //{
             //c = _getch();
             cin >> c;
+            c = (char)tolower(c);
             if (sub)
                 subControl(c);
             else
