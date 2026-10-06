@@ -3,9 +3,9 @@
 #include <iostream>
 #include <cassert>
 #include <cmath>
-#ifdef WIN32
+//#ifdef WIN64
 #include <windows.h>
-#endif
+//#endif
 //#include <conio.h>
 
 using namespace std;
@@ -557,9 +557,7 @@ int main()
     cin >> k;
     cout << "\033[2J\033[1;1H";
     srand(start);
-#ifdef WIN32
     SetConsoleOutputCP(CP_UTF8);
-#endif
     regen();
     //printWorld();
     cout << "press q to descend, e to relocate, or p to quit." << endl;
@@ -590,9 +588,6 @@ int main()
                 cout << "\033[2J\033[1;1H";
                 printVisible(sworld, 6);
             }
-#ifdef WIN32
-            Sleep(10); //prevents output from going black when you make fast inputs
-#endif
         //}
     }
         
