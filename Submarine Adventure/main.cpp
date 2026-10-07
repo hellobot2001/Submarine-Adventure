@@ -23,6 +23,7 @@ public:
     string text = "";
     bool walkable = true;
     bool tr = false;
+    bool ft = false;
     tile(int s, string h)
     {
         shape = h;
@@ -76,16 +77,16 @@ public:
     {
         int r = brand();
         int t = floor(pow(c, n));
-        return floor(pow(r % t, 1 / n));
+        return floor(maxLuck * pow(r % t, 1 / n));
     }
 
     void setName()
     {
-        int st = brand() % chance(20, 3);
-        int ms = brand() % chance(102, 3);
-        int mm = brand() % chance(22, 3);
-        int me = brand() % chance(40, 3);
-        int ty = brand() % chance(33, 3);
+        int st = brand() % chance(20, 4-luck);
+        int ms = brand() % chance(102, 4-luck);
+        int mm = brand() % chance(22, 4-luck);
+        int me = brand() % chance(40, 4-luck);
+        int ty = brand() % chance(33, 4-luck);
         name = name + state[st];
         name = name + matStart[ms];
         if (rand() % 10 < 4)
@@ -127,14 +128,40 @@ int cY = 0;
 double money = 0;
 int quota = 1;
 const int quotaMultiplier = 100;
+/*
+class upgrade {
+private:
+    double cost;
+    string name;
+    int d1;
+    int d2;
+    int d3;
+    i
+public:
+    upgrade(int c, int n, int d1, int d2, int d3, double d4, double d5, double d6, double d7, double d8, double d9, double d10, double d11, int d12, int d13) //cost, name, maxO2, O2gen, scuba, treasure$, reassure$+, treasure+, quota, light, sight, faulty, scan, choice, tolerance
+    {
 
-int maxO2 = 100;
+    }
+};*/
+
+int maxO2 = 100; //       d1  | maximum oxygen
+int O2gen = 0; //         d2  | produce oxygen when not docked at surface
+int scuba = 0; //         d3  | distance from surface oxy gen works, oxy gen decreases farther from surface however
+double luck = 0; //       d4  | liklihood of getting better treasure
+double maxLuck = 0.2; //  d5  | highest treasure component proportional to number of components
+double prosperity = 0; // d6  | more treasure
+double swindle = 1; //    d7  | lower quota
+double light = 0; //      d8  | larger light
+double glass = 3.5; //    d9  | farther sight
+double faulty = 0.5; //   d10 | chance of detecting false treasures
+double dish = 2.5; //     d11 | inspect scan radius
+int bargain = 3; //       d12 | number of upgrade choices each island
+int tolerance = 5; //     d13 | number of times pirates will let you dock before moving to the next location
+
 int O2 = maxO2;
 
-int O2gen = 0;
-
-
 int attempts = 0;
+int ct = tolerance;
 bool sub = false;
 
 bool tutDesc = true;
@@ -296,6 +323,7 @@ void genPath(vector<vector<tile>>& w, int nr, int xr, int jmp, int l, double ci,
 
 void regen()
 {
+    ct = tolerance;
     sworld = vector<vector<tile>>(num, vector<tile>(num, tile()));
     attempts++;
     X = 0;
@@ -313,11 +341,11 @@ void regen()
     }
     irand = rand();
     drand = irand / (double)RAND_MAX;
-    for (int i = 0; i < (int)(pow(log2(num), 2 + drand)); i++)
+    for (int i = 0; i < (int)(pow(log2(num), 2 + drand + prosperity)); i++)
     {
         int rx = rand() % num;
         int ry = rand() % num;
-        while (!sworld[rx][ry].walkable || sworld[rx][ry].tr)
+        while (!sworld[rx][ry].walkable || tworld[rx][ry].tr)
         {
             rx = rand() % num;
             ry = rand() % num;
@@ -354,6 +382,24 @@ void ascend()
     }
     cout << "total earnings this descent: +\033[38;2;255;215;0m" << total << "\033[m doubloons." << endl;
     treasureList = vector<treasure>();
+    ct--;
+    if (ct <= 0)
+    {
+        cout << "\033[2J\033[1;1H";
+        cout << "\033[38;2;200;0;0mYER TAKIN TOO LONG !!!!!\033[m" << endl;
+        if (money >= quota * quota * quotaMultiplier * swindle)
+        {
+            money -= quota * quota * quotaMultiplier * swindle;
+            quota++;
+        }
+        else
+        {
+            O2 = 0;
+            cout << "\033[38;2;200;0;0mYARRR YE BE SLEEPIN WITH THE FISHIESSS !!!!!\033[m" << endl;
+            quota = 1;
+        }
+        regen();
+    }
 }
 
 void printWorld()
@@ -372,6 +418,8 @@ void printWorld()
 
 void printVisible(vector<vector<tile>>& w, double s) //world, sight radius
 {
+    double duh = s;
+    s = ceil(s);
     cout << "(" << X << ", " << Y << ")" << endl;
     if (X < num - s)
         cX = X;
@@ -386,7 +434,7 @@ void printVisible(vector<vector<tile>>& w, double s) //world, sight radius
             double d = sqrt(((s - i + dX) * (s - i + dX)) + ((s - f + dY) * (s - f + dY)));
             if (d == 0)
                 cout << "cↄ";
-            else if (d < s)
+            else if (d < duh)
                 if (cX + i - s >= 0 && cX + i - s < num && cY + f - s >= 0 && cY + f - s < num)
                     cout << w[fancyMod((cX + i - s), num)][fancyMod((cY + f - s), num)].getShape();
                 else if (cX + i - s < 0)
@@ -410,6 +458,10 @@ void printTreasures()
 
 void printO2()
 {
+    if (X > 0 && sub)
+        O2 -= 5;
+    if (X <= scuba && O2gen - X > 0)
+        O2 += O2gen - X;
     if (O2 >= maxO2 / 2)
     {
         int p = 510 * (1 - (O2 / (double)maxO2));
@@ -429,8 +481,6 @@ void subControl(char c)
         if (sworld[fancyMod((X - 1), num)][Y].walkable && X > 0)
         {
             X--;
-            if (X > 0 && sub)
-                O2--;
             printO2();
         }
         else
@@ -439,8 +489,6 @@ void subControl(char c)
         if (sworld[fancyMod((X + 1), num)][Y].walkable && X < num - 1)
         {
             X++;
-            if (X > 0 && sub)
-                O2--;
             printO2();
         }
         else
@@ -449,8 +497,6 @@ void subControl(char c)
         if (sworld[X][fancyMod((Y - 1), num)].walkable && Y > 0)
         {
             Y--;
-            if (X > 0 && sub)
-                O2--;
             printO2();
         }
         else
@@ -459,8 +505,6 @@ void subControl(char c)
         if (sworld[X][fancyMod((Y + 1), num)].walkable && Y < num - 1)
         {
             Y++;
-            if (X > 0 && sub)
-                O2--;
             printO2();
         }
         else
@@ -475,13 +519,13 @@ void subControl(char c)
     if (c == 'i')
     {
         tutScan = false;
-        int s = 6;
+        int s = ceil(dish);
         for (int i = 0; i < (2 * s) + 1; i++)
         {
             for (int f = 0; f < (2 * s) + 1; f++)
             {
                 double d = sqrt(((s - i) * (s - i)) + ((s - f) * (s - f)));
-                if (d < s)
+                if (d < dish)
                     if (X + i - s >= 0 && X + i - s < num && Y + f - s >= 0 && Y + f - s < num)
                     {
                         if (tworld[X + i - s][Y + f - s].tr)
@@ -505,7 +549,7 @@ void subControl(char c)
     {
         cout << "YARRGH return to our ship and give us yer treasures !!!" << endl;
     }
-    printVisible(sworld, 6);
+    printVisible(sworld, glass);
     if (c == 't')
     {
         printTreasures();
@@ -524,8 +568,9 @@ void subControl(char c)
         }
         ascend();
         cout << "press q to descend, e to relocate, or p to quit." << endl;
-        cout << "you have \033[38;2;255;215;0m" << money << "\033[m doubloons, and you need \033[38;2;255;215;0m" << (quota * quota * quotaMultiplier) << "\033[m doubloons for your next quota." << endl;
-        printVisible(sworld, 6);
+        cout << "you have \033[38;2;255;215;0m" << money << "\033[m doubloons, and you need \033[38;2;255;215;0m" << (quota * quota * quotaMultiplier * swindle) << "\033[m doubloons for your next quota." << endl;
+        cout << "the pirates will leave in \033[38;2;200;0;0m" << ct << "\033[m attempt(s)." << endl;
+        printVisible(sworld, glass);
     }
 }
 
@@ -542,9 +587,9 @@ void shopControl(char c)
     {
         if (c == 'e')
         {
-            if (money >= quota * quota * quotaMultiplier)
+            if (money >= quota * quota * quotaMultiplier * swindle)
             {
-                money -= quota * quota * quotaMultiplier;
+                money -= quota * quota * quotaMultiplier * swindle;
                 quota++;
             }
             else
@@ -556,12 +601,13 @@ void shopControl(char c)
             regen();
         }
         cout << "press q to descend, e to relocate, or p to quit." << endl;
-        cout << "you have \033[38;2;255;215;0m" << money << "\033[m doubloons, and you need \033[38;2;255;215;0m" << (quota * quota * quotaMultiplier) << "\033[m doubloons for your next quota." << endl;
+        cout << "you have \033[38;2;255;215;0m" << money << "\033[m doubloons, and you need \033[38;2;255;215;0m" << (quota * quota * quotaMultiplier * swindle) << "\033[m doubloons for your next quota." << endl;
+        cout << "the pirates will leave in \033[38;2;200;0;0m" << ct << "\033[m attempt(s)." << endl;
         if (tutDesc)
         {
             cout << "YARRGH undock NOW [q] and begin getting treasures for us !!!!!!!!!" << endl;
         }
-        printVisible(sworld, 6);
+        printVisible(sworld, glass);
     }
     
 }
@@ -593,7 +639,7 @@ int main()
     cout << "press anything to continue: ";
     cin >> k;
     cout << "\033[2J\033[1;1H";
-    cout << "they will also take your money whenever your try to \033[38;2;255;215;0mupgrade\033[m your treasure hunting gear!" << endl;
+    cout << "when you relocate, the pirates take you to an island, where you can \033[38;2;255;215;0mupgrade\033[m your treasure hunting gear!" << endl;
     cout << "press anything to continue: ";
     cin >> k;
     cout << "\033[2J\033[1;1H";
@@ -612,8 +658,9 @@ int main()
     regen();
     //printWorld();
     cout << "press q to descend, e to relocate, or p to quit." << endl;
-    cout << "you have \033[38;2;255;215;0m" << money << "\033[m doubloons, and you need \033[38;2;255;215;0m" << (quota * quota * quotaMultiplier) << "\033[m doubloons for your next quota." << endl;
-    printVisible(sworld, 6);
+    cout << "you have \033[38;2;255;215;0m" << money << "\033[m doubloons, and you need \033[38;2;255;215;0m" << (quota * quota * quotaMultiplier * swindle) << "\033[m doubloons for your next quota." << endl;
+    cout << "the pirates will leave in \033[38;2;200;0;0m" << ct << "\033[m attempt(s)." << endl;
+    printVisible(sworld, glass);
     while (true)
     {
         cout << "action: ";
@@ -631,14 +678,27 @@ int main()
                 break;
             if (O2 <= 0)
             {
-                cout << "you ran out of oxygen and died." << endl;
+                cout << "\033[38;2;200;0;0myou ran out of oxygen and died.\033[m" << endl;
                 cout << "enter anything to restart: ";
                 cin >> k;
-                money = 0;
-                regen();
                 ascend();
+                regen();
+                money = 0;
+                maxO2 = 100; //       d1  | maximum oxygen
+                O2gen = 0; //         d2  | produce oxygen when not docked at surface
+                scuba = 0; //         d3  | distance from surface oxy gen works, oxy gen decreases farther from surface however
+                luck = 0.0; //        d4  | liklihood of getting better treasure
+                maxLuck = 0.2; //     d5  | highest treasure component proportional to number of components
+                prosperity = 0.0; //  d6  | more treasure
+                swindle = 1.0; //     d7  | lower quota
+                light = 0.0; //       d8  | larger light
+                glass = 3.5; //       d9  | farther sight
+                faulty = 0.5; //      d10 | chance of detecting false treasures
+                dish = 2.5; //        d11 | inspect scan radius
+                bargain = 3; //       d12 | number of upgrade choices each island
+                tolerance = 5; //     d13 | number of times pirates will let you dock before moving to the next location
                 cout << "\033[2J\033[1;1H";
-                printVisible(sworld, 6);
+                printVisible(sworld, glass);
             }
         //}
     }
