@@ -3,9 +3,9 @@
 #include <iostream>
 #include <cassert>
 #include <cmath>
-//#ifdef WIN32
+#ifdef _WIN32
 #include <windows.h>
-//#endif
+#endif
 //#include <conio.h>
 
 using namespace std;
@@ -131,8 +131,16 @@ const int quotaMultiplier = 100;
 int maxO2 = 100;
 int O2 = maxO2;
 
+int O2gen = 0;
+
+
 int attempts = 0;
 bool sub = false;
+
+bool tutDesc = true;
+bool tutScan = true;
+bool tutGet = true;
+bool tutDock = true;
 
 vector<treasure> treasureList;
 
@@ -362,7 +370,7 @@ void printWorld()
     cout << endl;
 }
 
-void printVisible(vector<vector<tile>>& w, int s) //world, sight radius
+void printVisible(vector<vector<tile>>& w, double s) //world, sight radius
 {
     cout << "(" << X << ", " << Y << ")" << endl;
     if (X < num - s)
@@ -459,12 +467,14 @@ void subControl(char c)
             cout << "can't go there!" << endl;
     if (sworld[fancyMod(X, num)][fancyMod(Y, num)].tr)
     {
+        tutGet = false;
         treasureList.push_back(treasure());
         cout << "you got \033[38;2;255;215;0m" << treasureList[treasureList.size() - 1].getName() << "\033[m worth \033[38;2;255;215;0m" << treasureList[treasureList.size() - 1].getValue() << "\033[m doubloons!" << endl;
         sworld[fancyMod(X, num)][fancyMod(Y, num)] = tile(rand(), "..");
     }
     if (c == 'i')
     {
+        tutScan = false;
         int s = 6;
         for (int i = 0; i < (2 * s) + 1; i++)
         {
@@ -483,6 +493,18 @@ void subControl(char c)
             }
         }
     }
+    if (tutScan)
+    {
+        cout << "YARRGH use yer TRUSTY SCANNER [i] to locate goodies !!! it ain't the most reliable, though." << endl;
+    }
+    if (tutGet && !tutScan)
+    {
+        cout << "YARRGH when ye FIND treasure (!! or ??) go DRIVE OVER TO IT!!! WE DONT PICK THINGS UP FOR YE!!!" << endl;
+    }
+    if (!tutGet && tutDock)
+    {
+        cout << "YARRGH return to our ship and give us yer treasures !!!" << endl;
+    }
     printVisible(sworld, 6);
     if (c == 't')
     {
@@ -491,9 +513,18 @@ void subControl(char c)
     if (c == 'q' && X == 0)
     {
         cout << "\033[2J\033[1;1H";
+        if (!tutGet && tutDock)
+        {
+            tutDock = false;
+            cout << "YARRGH NOW DO IT AGAIN!! YE NEED 100 DOUBLOONS BEFORE WE LEAVE!!!" << endl;
+        }
+        else if (!tutDesc && tutDock)
+        {
+            cout << "YARRGH WHAT'RE YE DOIN WE NEED TREASURES !!!!!!!!!!" << endl;
+        }
         ascend();
         cout << "press q to descend, e to relocate, or p to quit." << endl;
-        cout << "you have \033[38;2;255;215;0m" << money << "\033[m doubloons." << endl;
+        cout << "you have \033[38;2;255;215;0m" << money << "\033[m doubloons, and you need \033[38;2;255;215;0m" << (quota * quota * quotaMultiplier) << "\033[m doubloons for your next quota." << endl;
         printVisible(sworld, 6);
     }
 }
@@ -504,6 +535,7 @@ void shopControl(char c)
     if (c == 'q')
     {
         sub = true;
+        tutDesc = false;
         subControl(' ');
     }
     else
@@ -525,46 +557,62 @@ void shopControl(char c)
         }
         cout << "press q to descend, e to relocate, or p to quit." << endl;
         cout << "you have \033[38;2;255;215;0m" << money << "\033[m doubloons, and you need \033[38;2;255;215;0m" << (quota * quota * quotaMultiplier) << "\033[m doubloons for your next quota." << endl;
+        if (tutDesc)
+        {
+            cout << "YARRGH undock NOW [q] and begin getting treasures for us !!!!!!!!!" << endl;
+        }
         printVisible(sworld, 6);
     }
     
 }
 
+//upgrades: max O2+, Oxy gen, more treasure, better treasure, lower quota, more sight, better light, better inspect
+
+
+
 int main()
 {
     char k;
     cout << "having been cast from your family as a child, you followed a life of crime." << endl;
+    cout << "press anything to continue: ";
     cin >> k;
     cout << "\033[2J\033[1;1H";
     cout << "after being caught and sent to jail for the Nth time, you were to be given \033[38;2;200;0;0mCAPITAL PUNISHMENT\033[m." << endl;
+    cout << "press anything to continue: ";
     cin >> k;
     cout << "\033[2J\033[1;1H";
     cout << "you were let off the hook this last time, however, on the condition that you worked for a shady gang of pirates to help them make \033[38;2;255;215;0mdoubloons\033[m." << endl;
+    cout << "press anything to continue: ";
     cin >> k;
     cout << "\033[2J\033[1;1H";
     cout << "the best way you know how is to find \033[38;2;255;215;0mtreasures\033[m!" << endl;
+    cout << "press anything to continue: ";
     cin >> k;
     cout << "\033[2J\033[1;1H";
     cout << "the pirates \033[38;2;200;0;0mwon't be going easy on you\033[m, however, and will take an amount equal to your current \033[38;2;255;215;0mquota\033[m every time you relocate." << endl;
+    cout << "press anything to continue: ";
     cin >> k;
     cout << "\033[2J\033[1;1H";
     cout << "they will also take your money whenever your try to \033[38;2;255;215;0mupgrade\033[m your treasure hunting gear!" << endl;
+    cout << "press anything to continue: ";
     cin >> k;
     cout << "\033[2J\033[1;1H";
     cout << "and if you don't have enough money to meet your \033[38;2;255;215;0mquota\033[m, the pirates will \033[38;2;200;0;0mfeed you to the fishes\033[m!" << endl;
+    cout << "press anything to continue: ";
     cin >> k;
     cout << "\033[2J\033[1;1H";
     cout << "and so, with enough said, you hop in your rusty submarine to find some treasures." << endl;
+    cout << "press anything to continue: ";
     cin >> k;
     cout << "\033[2J\033[1;1H";
     srand(start);
-#ifdef WIN32
+#ifdef _WIN32
     SetConsoleOutputCP(CP_UTF8);
 #endif
     regen();
     //printWorld();
     cout << "press q to descend, e to relocate, or p to quit." << endl;
-    cout << "you have \033[38;2;255;215;0m" << money << "\033[m doubloons." << endl;
+    cout << "you have \033[38;2;255;215;0m" << money << "\033[m doubloons, and you need \033[38;2;255;215;0m" << (quota * quota * quotaMultiplier) << "\033[m doubloons for your next quota." << endl;
     printVisible(sworld, 6);
     while (true)
     {
