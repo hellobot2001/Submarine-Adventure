@@ -14,6 +14,16 @@ using namespace std;
 //string tiles[8] = { "██", "▓▓", "▒▒", "░░", "  ", "??", "$>", "$<",  };
 //RAND_MAX
 
+
+int X = 0;
+int Y = 0;
+int cX = 0;
+int cY = 0;
+
+double luck = 0; //       d4  | liklihood of getting better treasure
+double maxLuck = 0.2; //  d5  | highest treasure component proportional to number of components
+double prosperity = 0; // d6  | more treasure
+
 class tile
 {
 private:
@@ -82,11 +92,11 @@ public:
 
     void setName()
     {
-        int st = brand() % chance(20, 4-luck);
-        int ms = brand() % chance(102, 4-luck);
-        int mm = brand() % chance(22, 4-luck);
-        int me = brand() % chance(40, 4-luck);
-        int ty = brand() % chance(33, 4-luck);
+        int st = brand() % chance(20, (4 - luck));
+        int ms = brand() % chance(102, (4 - luck));
+        int mm = brand() % chance(22, (4 - luck));
+        int me = brand() % chance(40, (4.0 - luck));
+        int ty = brand() % chance(33, (4.0 - luck));
         name = name + state[st];
         name = name + matStart[ms];
         if (rand() % 10 < 4)
@@ -120,11 +130,6 @@ int num = 256;
 vector<vector<tile>> sworld = vector<vector<tile>>(num, vector<tile>(num, tile()));
 vector<vector<tile>> tworld = vector<vector<tile>>(num, vector<tile>(num, tile()));
 
-int X = 0;
-int Y = 0;
-int cX = 0;
-int cY = 0;
-
 double money = 0;
 int quota = 1;
 const int quotaMultiplier = 100;
@@ -147,9 +152,7 @@ public:
 int maxO2 = 100; //       d1  | maximum oxygen
 int O2gen = 0; //         d2  | produce oxygen when not docked at surface
 int scuba = 0; //         d3  | distance from surface oxy gen works, oxy gen decreases farther from surface however
-double luck = 0; //       d4  | liklihood of getting better treasure
-double maxLuck = 0.2; //  d5  | highest treasure component proportional to number of components
-double prosperity = 0; // d6  | more treasure
+
 double swindle = 1; //    d7  | lower quota
 double light = 0; //      d8  | larger light
 double glass = 3.5; //    d9  | farther sight
@@ -547,7 +550,7 @@ void subControl(char c)
     }
     if (!tutGet && tutDock)
     {
-        cout << "YARRGH return to our ship and give us yer treasures !!!" << endl;
+        cout << "YARRGH return to our ship [q] and give us yer treasures !!!" << endl;
     }
     printVisible(sworld, glass);
     if (c == 't')
@@ -638,10 +641,10 @@ int main()
     cout << "the pirates \033[38;2;200;0;0mwon't be going easy on you\033[m, however, and will take an amount equal to your current \033[38;2;255;215;0mquota\033[m every time you relocate." << endl;
     cout << "press anything to continue: ";
     cin >> k;
-    cout << "\033[2J\033[1;1H";
-    cout << "when you relocate, the pirates take you to an island, where you can \033[38;2;255;215;0mupgrade\033[m your treasure hunting gear!" << endl;
-    cout << "press anything to continue: ";
-    cin >> k;
+    //cout << "\033[2J\033[1;1H";
+    //cout << "when you relocate, the pirates take you to an island, where you can \033[38;2;255;215;0mupgrade\033[m your treasure hunting gear!" << endl;
+    //cout << "press anything to continue: ";
+    //cin >> k;
     cout << "\033[2J\033[1;1H";
     cout << "and if you don't have enough money to meet your \033[38;2;255;215;0mquota\033[m, the pirates will \033[38;2;200;0;0mfeed you to the fishes\033[m!" << endl;
     cout << "press anything to continue: ";
