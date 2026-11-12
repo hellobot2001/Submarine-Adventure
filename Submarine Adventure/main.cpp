@@ -313,6 +313,16 @@ public:
     //}
 };
 
+bool raycast(map m, int x1, int y1, int x2, int y2)
+{
+    int dx = x2 - x1;
+    int dy = y2 - y1;
+    double dist = sqrt((dx * dx) + (dy * dy));
+    double sx = dx / dist;
+    double sy = dy / dist;
+
+}
+
 int fancyMod(int x, int y)
 {
     cout << x % y + y << endl;
