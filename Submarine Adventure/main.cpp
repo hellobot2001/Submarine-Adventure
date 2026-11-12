@@ -66,6 +66,7 @@ private:
     double value;
 public:
     int x, y;
+    bool t = false;
     treasure(int _x, int _y)
     {
         setName();
@@ -249,8 +250,8 @@ public:
     void fullGen()
     {
         caveGen();
-        for (treasure t : hidden)
-            cout << t.getName() << ": " << t.getValue() << ", (" << t.x << ", " << t.y << ")" << endl;
+        //for (treasure t : hidden)
+        //    cout << t.getName() << ": " << t.getValue() << ", (" << t.x << ", " << t.y << ")" << endl;
     }
 
     vector<tile> operator[](int i)
@@ -311,21 +312,67 @@ public:
     //{
 
     //}
+    bool raycast(int x1, int y1, int x2, int y2)
+    {
+        int dx = x2 - x1;
+        int dy = y2 - y1;
+
+        int steps = max(abs(dx), abs(dy));
+
+        if (steps == 0)
+        {
+            return main[x1][y1].walkable;
+        }
+
+        double xInc = (double)dx / steps;
+        double yInc = (double)dy / steps;
+
+
+        double x = x1;
+        double y = y1;
+
+        for (int i = 0; i <= steps; i++)
+        {
+            int currentX = floor(x);
+            int currentY = floor(y);
+
+            if (currentX >= 0 && currentX < size)
+            {
+                if (!main[x][y].walkable)
+                    return false;
+            }
+
+            x += xInc;
+            y += yInc;
+        }
+        return true;
+    }
 };
 
-bool raycast(map m, int x1, int y1, int x2, int y2)
-{
-    int dx = x2 - x1;
-    int dy = y2 - y1;
-    double dist = sqrt((dx * dx) + (dy * dy));
-    double sx = dx / dist;
-    double sy = dy / dist;
+class bubble : public entity {
+private:
+    int life;
+public:
 
-}
+};
 
+class vent : public entity {
+private: 
+    int quota;
+    int cnt;
+public:
+
+};
+
+class lever : public entity {
+
+};
+
+class door : public entity {
+
+};
 int fancyMod(int x, int y)
 {
-    cout << x % y + y << endl;
     return x % y;
 }
 //temp regular world of size num
@@ -574,6 +621,7 @@ void restart(int event)
     dish = 2.5; //        d11 | inspect scan radius
     bargain = 3; //       d12 | number of upgrade choices each island
     tolerance = 5; //     d13 | number of times pirates will let you dock before moving to the next location
+    ct = 5;
     sub = 0;
     UI(1);
 }
@@ -583,6 +631,7 @@ void ascend()
     O2 = maxO2;
     sub = 0;
     ct--;
+    UI(2);
     if (ct <= 0)
     {
         if (money >= quota * quota * quotaMultiplier * swindle)
@@ -626,23 +675,25 @@ void subControl(char c)
     if (sworld[fancyMod(X, num)][fancyMod(Y, num)].tr)
     {
         tutGet = false;
-        treasureList.push_back(treasure());
-        cout << "you got \033[38;2;255;215;0m" << treasureList[treasureList.size() - 1].getName() << "\033[m worth \033[38;2;255;215;0m" << treasureList[treasureList.size() - 1].getValue() << "\033[m doubloons!" << endl;
-        sworld[fancyMod(X, num)][fancyMod(Y, num)] = tile("..");
         for (treasure i : sworld.tlist())
-            if (i.x == X && i.y == Y)
+            if (i.x == X && i.y == Y && i.t == false)
+            {
                 treasureList.push_back(i);
+            }
+        cout << "you got \033[38;2;255;215;0m" << treasureList[treasureList.size() - 1].getName() << "\033[m worth \033[38;2;255;215;0m" << treasureList[treasureList.size() - 1].getValue() << "\033[m doubloons!" << endl;
+        sworld.setTile(1, fancyMod(X, num), fancyMod(Y, num), tile(".."));
     }
     if (c == 'i')
     {
+        tutScan = false;
         sworld.interact(dish);
     }
-    sworld.printVisible(glass);
+    //sworld.printVisible(glass);
     if (c == 't')
     {
         printTreasures();
     }
-    if (c == 'q' && X == 0)
+    else if (c == 'q' && X == 0)
         ascend();
     else
         UI(3);
@@ -716,14 +767,15 @@ void intro()
 int main()
 {
     Y = 128;
-    cout << (int)time(0) << endl;
-    intro();
+    //cout << (int)time(0) << endl;
+    //intro();
     srand((int)time(0));
 #ifdef _WIN32
     SetConsoleOutputCP(CP_UTF8);
 #endif
     sworld.fullGen();
     //printWorld();
+    UI(1);
     while (true)
     {
         cout << "action: ";
