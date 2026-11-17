@@ -14,6 +14,34 @@ int Y = 0;
 int cX = 0;
 int cY = 0;
 
+double money = 0;
+int quota = 1;
+const int quotaMultiplier = 10;
+
+int maxO2 = 100; //       d1  | maximum oxygen
+int O2gen = 0; //         d2  | produce oxygen when not docked at surface
+int scuba = 0; //         d3  | distance from surface oxy gen works, oxy gen decreases farther from surface however
+
+double swindle = 1; //    d7  | lower quota
+double light = 0; //      d8  | larger light
+double glass = 3.5; //    d9  | farther sight
+double faulty = 0.5; //   d10 | chance of detecting false treasures
+double dish = 2.5; //     d11 | inspect scan radius
+int bargain = 3; //       d12 | number of upgrade choices each island
+int tolerance = 5; //     d13 | number of times pirates will let you dock before moving to the next location
+
+int O2 = maxO2;
+
+int attempts = 0;
+int ct = tolerance;
+int sub = 0; // 0 = docked, 1 = roaming, 2 = island
+int issue = 0; // 0 = none, 1 = tile blocking way, 2 = enttiy blocking way, 3 = world edge
+
+bool tutDesc = true;
+bool tutScan = true;
+bool tutGet = true;
+bool tutDock = true;
+
 double dist(int x1, int y1, int x2, int y2)
 {
     int dx = x1 - x2;
@@ -124,9 +152,9 @@ public:
 
 class entity // entities do not need to be static, and have unique actions when a game step occurs, when interacted with (inspected while overlapping with player, or, in the case that it is solid, ran into by the player), or when triggered (levers, buttons, pressure plates, etc. of the corresponding ID)
 {
-private:
+protected:
     int x, y, ID;
-    bool solid;
+    bool solid = false;
     string shape;
 public:
     entity(int _x, int _y)
@@ -134,11 +162,26 @@ public:
         x = _x;
         y = _y;
     }
-
+    bool solidity()
+    {
+        return solid;
+    }
+    int getx()
+    {
+        return x;
+    }
+    int gety()
+    {
+        return y;
+    }
+    string getShape()
+    {
+        return shape;
+    }
     virtual void start() = 0;
-    virtual void step() = 0;
-    virtual void interact() = 0;
-    virtual void trigger() = 0;
+    virtual void step() {}
+    virtual void interact() {}
+    virtual void trigger() {}
 };
 
 class map
@@ -157,6 +200,19 @@ public:
         size = num;
         seed = s;
         main = vector<vector<tile>>(num, vector<tile>(num, tile()));
+    }
+
+    void trig()
+    {
+        trigger.push_back(false);
+    }
+    void swatch(int ID)
+    {
+        trigger[ID] = !trigger[ID];
+    }
+    bool read(int ID)
+    {
+        return trigger[ID];
     }
 
     vector<treasure> tlist()
@@ -214,30 +270,30 @@ public:
 
     void caveGen()
     {
-        srand(seed);
-        int seed = rand();
-        srand(seed);
+        //srand(seed);
+        //int seed = rand();
+        //srand(seed);
         double irand = rand();
         double drand = irand / (double)RAND_MAX;
         for (int i = 0; i < (int)(pow(log2(size), 1.75 + drand)); i++)
         {
             tile t = tile("██");
             t.walkable = false;
-            genPath(rand() % 3, (rand() % 8) + 3, rand() % 8, 50, 0, 1, t);
+            genPath(rand() % 2, (rand() % 2) + 2, rand() % 2, 1, 0, 1, t);
         }
         irand = rand();
         drand = irand / (double)RAND_MAX;
-        for (int i = 0; i < (int)(pow(log2(size), 2 + drand + prosperity)); i++)
-        {
-            int rx = rand() % size;
-            int ry = rand() % size;
-            while (!main[rx][ry].walkable || tr(rx, ry))
-            {
-                rx = rand() % size;
-                ry = rand() % size;
-            }
-            hidden.push_back(treasure(rx, ry));
-        }
+        //for (int i = 0; i < (int)(pow(log2(size), 2 + drand + prosperity)); i++)
+        //{
+        //    int rx = rand() % size;
+        //    int ry = rand() % size;
+        //    while (!main[rx][ry].walkable || tr(rx, ry))
+        //    {
+        //        rx = rand() % size;
+        //        ry = rand() % size;
+        //    }
+        //    hidden.push_back(treasure(rx, ry));
+        //}
         for (int i = 0; i < size; i++)
         {
             if (main[0][i].getShape() == "  ")
@@ -254,7 +310,7 @@ public:
         //    cout << t.getName() << ": " << t.getValue() << ", (" << t.x << ", " << t.y << ")" << endl;
     }
 
-    vector<tile> operator[](int i)
+    vector<tile>& operator[](int i)
     {
         return main[i];
     }
@@ -284,7 +340,10 @@ public:
                     cout << "cↄ";
                 else if (d < duh)
                     if (cX + i - s >= 0 && cX + i - s < size && cY + f - s >= 0 && cY + f - s < size)
-                        cout << main[fancyMod((cX + i - s), size)][fancyMod((cY + f - s), size)].getShape();
+                        if (main[fancyMod((cX + i - s), size)][fancyMod((cY + f - s), size)].getShape() == "  " && checkMoving(cX + i - s, cY + f - s) >= 0)
+                            cout << moving[checkMoving(cX + i - s, cY + f - s)]->getShape();
+                        else
+                            cout << main[fancyMod((cX + i - s), size)][fancyMod((cY + f - s), size)].getShape();
                     else if (cX + i - s < 0)
                         cout << "  ";
                     else
@@ -298,7 +357,13 @@ public:
 
     void step()
     {
-
+        for (entity* e : moving)
+            e->interact();
+    }
+    void toggle()
+    {
+        for (int i = 0; i < moving.size(); i++)
+            moving[i]->trigger();
     }
     void interact(double d)
     {
@@ -307,11 +372,30 @@ public:
         for (treasure t : hidden)
             if (dist(X, Y, t.x, t.y) < d)
                 main[t.x][t.y] = f;
+        for (entity* e : moving)
+        {
+            e->interact();
+            e->trigger();
+        }
     }
-    //void trigger()
-    //{
-
-    //}
+    bool checkSolid(int x, int y)
+    {
+        for (int i = 0; i < moving.size(); i++)
+            if (moving[i]->solidity() && moving[i]->getx() == x && moving[i]->gety() == y)
+                return true;
+        return false;
+    }
+    int checkMoving(int x, int y)
+    {
+        for (int i = 0; i < moving.size(); i++)
+            if (moving[i]->getx() == x && moving[i]->gety() == y)
+                return i;
+        return -1;
+    }
+    void addEntity(entity* e)
+    {
+        moving.push_back(e);
+    }
     bool raycast(int x1, int y1, int x2, int y2)
     {
         int dx = x2 - x1;
@@ -349,63 +433,79 @@ public:
     }
 };
 
+int num = 16;
+map sworld(num, (int)time(0));
+
 class bubble : public entity {
-private:
-    int life;
+//private:
+//    int life;
 public:
-
+    bubble(int _x, int _y) : entity(_x, _y) {};
+    void step()
+    {
+        if (x == X && y == Y)
+            O2++;
+    }
+    void start() {}
 };
 
-class vent : public entity {
-private: 
-    int quota;
-    int cnt;
-public:
-
-};
+//class vent : public entity {
+//private: 
+//    int quota;
+//    int cnt = 0;
+//public:
+//    vent(int _x, int _y) : entity(_x, _y)
+//    {
+//        solid = false;
+//        quota = (rand() % 7) + 2;
+//    }
+//    void step()
+//    {
+//
+//    }
+//};
 
 class lever : public entity {
-
+private:
+    bool toggled = false;
+public:
+    lever(int _x, int _y, int _ID) : entity(_x, _y) { ID = _ID; sworld.trig(); shape = "\\\\"; }
+    void interact()
+    {
+        if (x == X && y == Y)
+            sworld.swatch(ID);
+        sworld.toggle();
+        if (toggled)
+            shape = "//";
+        else
+            shape = "\\\\";
+    }
+    void start() {}
 };
 
 class door : public entity {
-
+public:
+    door(int _x, int _y, int _ID) : entity(_x, _y) { ID = _ID; solid = true; shape = "=="; }
+    void trigger()
+    {
+        if (sworld.read(ID))
+        {
+            solid = false;
+            shape = "\033[38;2;100;100;100m==\033[m";
+        }
+        else
+        {
+            solid = true;
+            shape = "==";
+        }
+    }
+    void start() {}
 };
 int fancyMod(int x, int y)
 {
     return x % y;
 }
 //temp regular world of size num
-int num = 256;
-map sworld(num, (int)time(0));
-
-double money = 0;
-int quota = 1;
-const int quotaMultiplier = 10;
-
-int maxO2 = 100; //       d1  | maximum oxygen
-int O2gen = 0; //         d2  | produce oxygen when not docked at surface
-int scuba = 0; //         d3  | distance from surface oxy gen works, oxy gen decreases farther from surface however
-
-double swindle = 1; //    d7  | lower quota
-double light = 0; //      d8  | larger light
-double glass = 3.5; //    d9  | farther sight
-double faulty = 0.5; //   d10 | chance of detecting false treasures
-double dish = 2.5; //     d11 | inspect scan radius
-int bargain = 3; //       d12 | number of upgrade choices each island
-int tolerance = 5; //     d13 | number of times pirates will let you dock before moving to the next location
-
-int O2 = maxO2;
-
-int attempts = 0;
-int ct = tolerance;
-int sub = 0; // 0 = docked, 1 = roaming, 2 = island
-int issue = 0; // 0 = none, 1 = tile blocking way, 2 = enttiy blocking way, 3 = world edge
-
-bool tutDesc = true;
-bool tutScan = true;
-bool tutGet = true;
-bool tutDock = true;
 
 vector<treasure> treasureList;
 
@@ -648,16 +748,19 @@ void ascend()
 void moveP(int x, int y)
 {
     if (x < num && x >= 0 && y < num && y >= 0)
-        if (sworld[x][y].walkable)
-        {
-            X = x; Y = y; 
-            if (X == 0 && O2 < maxO2)
-                O2++;
-            if (X > 0)
-                O2--;
-        }
+        if (!sworld.checkSolid(x, y))
+            if (sworld[x][y].walkable)
+            {
+                X = x; Y = y;
+                if (X == 0 && O2 < maxO2)
+                    O2++;
+                if (X > 0)
+                    O2--;
+            }
+            else
+                issue = 1;
         else
-            issue = 1;
+            issue = 2;
     else
         issue = 3;
 }
@@ -766,14 +869,34 @@ void intro()
 
 int main()
 {
-    Y = 128;
+    lever* l = new lever(1, 8, 0);
+    door* d1 = new door(2, 8, 0);
+    door* d2 = new door(2, 7, 0);
+    door* d3 = new door(2, 9, 0);
+    sworld.addEntity(l);
+    sworld.addEntity(d1);
+    sworld.addEntity(d2);
+    sworld.addEntity(d3);
+
+    Y = num/2;
+    X = 0;
     //cout << (int)time(0) << endl;
     //intro();
-    srand((int)time(0));
+    cout << "e" << endl;
+    //srand((int)time(0));
+    srand(0);
 #ifdef _WIN32
     SetConsoleOutputCP(CP_UTF8);
 #endif
+
+    cout << "e" << endl;
     sworld.fullGen();
+
+    tile tr1("!!");
+    tr1.tr = true;
+    sworld.setTile(1, 3, 8, tr1);
+
+    cout << "e" << endl;
     //printWorld();
     UI(1);
     while (true)
