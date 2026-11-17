@@ -358,7 +358,7 @@ public:
     void step()
     {
         for (entity* e : moving)
-            e->interact();
+            e->step();
     }
     void toggle()
     {
@@ -395,6 +395,14 @@ public:
     void addEntity(entity* e)
     {
         moving.push_back(e);
+    }
+    void addTreasure(treasure t)
+    {
+        hidden.push_back(t);
+    }
+    void swapT(int i)
+    {
+        hidden[i].t = true;
     }
     bool raycast(int x1, int y1, int x2, int y2)
     {
@@ -437,14 +445,20 @@ int num = 16;
 map sworld(num, (int)time(0));
 
 class bubble : public entity {
-//private:
-//    int life;
+    //private:
+    //    int life;
 public:
-    bubble(int _x, int _y) : entity(_x, _y) {};
+    bubble(int _x, int _y) : entity(_x, _y) { shape = "OO"; };
     void step()
     {
+        cout << x << X << y << Y << endl;
         if (x == X && y == Y)
-            O2++;
+            if (O2 < maxO2 - 5)
+            {
+                O2 += 5;
+            }
+            else
+                O2 = maxO2;
     }
     void start() {}
 };
@@ -475,6 +489,7 @@ public:
         if (x == X && y == Y)
             sworld.swatch(ID);
         sworld.toggle();
+        toggled = !toggled;
         if (toggled)
             shape = "//";
         else
@@ -529,7 +544,7 @@ string rgbackground(int r, int g, int b, string str)
 }
 string scatterTile()
 {
-    int i = floor(pow(rand() % 40, 3)/1600.0);
+    int i = floor(pow(rand() % 40, 3) / 1600.0);
     return scatter[i] + scatter[i];
 }
 string scatterTile(int seed)
@@ -542,11 +557,11 @@ string scatterTile(int seed)
 void rgbTest()
 {
     cout << endl << "world of more color!" << endl;
-    for (int i = 0; i <= 256; i+=16)
+    for (int i = 0; i <= 256; i += 16)
     {
-        for (int f = 0; f <= 256; f+=16)
+        for (int f = 0; f <= 256; f += 16)
         {
-            for (int d = 0; d <= 256; d+=16)
+            for (int d = 0; d <= 256; d += 16)
             {
                 cout << rgb(i, f, d, scatterTile());
             }
@@ -565,7 +580,7 @@ bool query(string q)
         return true;
     else
         return false;
-    
+
 }
 
 void printWorld()
@@ -763,6 +778,7 @@ void moveP(int x, int y)
             issue = 2;
     else
         issue = 3;
+    sworld.step();
 }
 
 void subControl(char c)
@@ -778,13 +794,17 @@ void subControl(char c)
     if (sworld[fancyMod(X, num)][fancyMod(Y, num)].tr)
     {
         tutGet = false;
-        for (treasure i : sworld.tlist())
+        for (int k = 0; k < sworld.tlist().size(); k++)
+        {
+            treasure i = sworld.tlist()[k];
             if (i.x == X && i.y == Y && i.t == false)
             {
                 treasureList.push_back(i);
+                sworld.swapT(k);
             }
+        }
         cout << "you got \033[38;2;255;215;0m" << treasureList[treasureList.size() - 1].getName() << "\033[m worth \033[38;2;255;215;0m" << treasureList[treasureList.size() - 1].getValue() << "\033[m doubloons!" << endl;
-        sworld.setTile(1, fancyMod(X, num), fancyMod(Y, num), tile(".."));
+        sworld[X][Y] = tile("..");
     }
     if (c == 'i')
     {
@@ -827,7 +847,7 @@ void shopControl(char c)
         }
         UI(1);
     }
-    
+
 }
 
 void intro()
@@ -873,12 +893,16 @@ int main()
     door* d1 = new door(2, 8, 0);
     door* d2 = new door(2, 7, 0);
     door* d3 = new door(2, 9, 0);
+    bubble* b = new bubble(1, 7);
+    bubble* b2 = new bubble(1, 6);
+    sworld.addEntity(b);
+    sworld.addEntity(b2);
     sworld.addEntity(l);
     sworld.addEntity(d1);
     sworld.addEntity(d2);
     sworld.addEntity(d3);
 
-    Y = num/2;
+    Y = num / 2;
     X = 0;
     //cout << (int)time(0) << endl;
     //intro();
@@ -894,7 +918,12 @@ int main()
 
     tile tr1("!!");
     tr1.tr = true;
-    sworld.setTile(1, 3, 8, tr1);
+    sworld.addTreasure(treasure(3, 8));
+    sworld.addTreasure(treasure(3, 7));
+    sworld.addTreasure(treasure(3, 9));
+    sworld[3][8] = tr1;
+    sworld[3][7] = tr1;
+    sworld[3][9] = tr1;
 
     cout << "e" << endl;
     //printWorld();
@@ -906,19 +935,19 @@ int main()
         //if (_kbhit())
         //{
             //c = _getch();
-            cin >> c;
-            c = (char)tolower(c);
-            if (sub)
-                subControl(c);
-            else
-                shopControl(c);
-            if (c == 'p')
-                break;
-            if (O2 <= 0)
-            {
-                restart(0);
-                ascend();
-            }
+        cin >> c;
+        c = (char)tolower(c);
+        if (sub)
+            subControl(c);
+        else
+            shopControl(c);
+        if (c == 'p')
+            break;
+        if (O2 <= 0)
+        {
+            restart(0);
+            ascend();
+        }
         //}
     }
 }
