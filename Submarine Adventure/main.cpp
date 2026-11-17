@@ -701,6 +701,7 @@ void UI(int event) // 0 to clear screen
 }
 void restart(int event)
 {
+    char k;
     UI(0);
     if (event == 0) // ran out of oxygen
         cout << "\033[38;2;200;0;0myou ran out of oxygen and died.\033[m" << endl;
@@ -718,7 +719,7 @@ void restart(int event)
         cout << "\033[38;2;200;0;0mhow...?\033[m" << endl;
 
     cout << "enter anything to restart: ";
-    cin;
+    cin >> k;
     sworld = map(num, (int)time(0));
     sworld.fullGen();
     quota = 1;
@@ -945,8 +946,10 @@ int main()
             break;
         if (O2 <= 0)
         {
-            restart(0);
             ascend();
+            restart(0);
+            X = 0;
+            Y = num / 2;
         }
         //}
     }
