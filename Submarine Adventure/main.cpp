@@ -370,8 +370,11 @@ public:
         tile f("!!");
         f.tr = true;
         for (treasure t : hidden)
-            if (dist(X, Y, t.x, t.y) < d)
+            if (dist(X, Y, t.x, t.y) < d && !t.t)
+            {
                 main[t.x][t.y] = f;
+                cout << t.t << " " << X << " " << Y << endl;
+            }
         for (entity* e : moving)
         {
             e->interact();
@@ -402,7 +405,7 @@ public:
     }
     void swapT(int i)
     {
-        hidden[i].t = true;
+        hidden[i].t = !hidden[i].t;
     }
     bool raycast(int x1, int y1, int x2, int y2)
     {
@@ -802,10 +805,11 @@ void subControl(char c)
             {
                 treasureList.push_back(i);
                 sworld.swapT(k);
+
+                cout << "you got \033[38;2;255;215;0m" << treasureList[treasureList.size() - 1].getName() << "\033[m worth \033[38;2;255;215;0m" << treasureList[treasureList.size() - 1].getValue() << "\033[m doubloons!" << endl;
+                sworld[X][Y] = tile("..");
             }
         }
-        cout << "you got \033[38;2;255;215;0m" << treasureList[treasureList.size() - 1].getName() << "\033[m worth \033[38;2;255;215;0m" << treasureList[treasureList.size() - 1].getValue() << "\033[m doubloons!" << endl;
-        sworld[X][Y] = tile("..");
     }
     if (c == 'i')
     {
@@ -951,6 +955,7 @@ int main()
             X = 0;
             Y = num / 2;
         }
+        cout << sworld.tlist().size();
         //}
     }
 }
