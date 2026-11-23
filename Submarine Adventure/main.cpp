@@ -928,7 +928,7 @@ void subControl(char c)
     {
         printTreasures();
     }
-    else if (c == 'q' && X == 0)
+    else if (c == 'q' && X == 0 && a)
         ascend();
     else
         if (tres)
