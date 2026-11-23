@@ -1114,7 +1114,7 @@ int main()
             ascend();
             restart(0);
             X = 0;
-            Y = num / 2;
+            Y = 8;
         }
         //sworld.printAll();
         //cout << sworld.tlist().size();
