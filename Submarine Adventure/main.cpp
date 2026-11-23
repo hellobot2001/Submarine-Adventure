@@ -8,6 +8,7 @@
 #endif
 
 using namespace std;
+class map;
 
 int X = 0;
 int Y = 0;
@@ -174,11 +175,15 @@ public:
     {
         return y;
     }
+    virtual int gettype()
+    {
+        return 0;
+    }
     string getShape()
     {
         return shape;
     }
-    virtual void start() = 0;
+    virtual void start(map* m) {}
     virtual void step() {}
     virtual void interact() {}
     virtual void trigger() {}
@@ -192,8 +197,8 @@ private:
     int seed = 0;
     vector<vector<tile>> main;
     vector<treasure> hidden;
-    vector<entity*> moving;
 public:
+    vector<entity*> moving;
     vector<bool> trigger;
     map(int num, int s)
     {
@@ -210,7 +215,6 @@ public:
     {
         trigger[ID] = !trigger[ID];
     }
-
     vector<treasure> tlist()
     {
         return hidden;
@@ -407,7 +411,12 @@ public:
             cout << endl;
         }
     }
-
+    void start()
+    {
+        cout << "start 0" << endl;
+        for (entity* e : moving)
+            e->start(this);
+    }
     void step()
     {
         for (entity* e : moving)
@@ -446,6 +455,19 @@ public:
         for (int i = 0; i < moving.size(); i++)
             if (moving[i]->getx() == x && moving[i]->gety() == y)
                 return i;
+        return -1;
+    }
+    int checkEntity(int x, int y)
+    {
+        for (int i = 0; i < moving.size(); i++)
+        {
+            cout << 1 << endl;
+            if (moving[i]->getx() == x && moving[i]->gety() == y)
+            {
+
+                return moving[i]->gettype();
+            }
+        }
         return -1;
     }
     void addEntity(entity* e)
@@ -517,7 +539,11 @@ public:
             else
                 O2 = maxO2;
     }
-    void start() {}
+    int gettype()
+    {
+        return 1;
+    }
+    void start(map* m) {}
 };
 
 //class vent : public entity {
@@ -531,6 +557,10 @@ public:
 //        quota = (rand() % 7) + 2;
 //        shape = "/\\";
 //    }
+// int gettype()
+    //{
+    //    return 2;
+    //}
 //    void step()
 //    {
 //
@@ -540,8 +570,9 @@ public:
 class lever : public entity {
 private:
     bool toggled = false;
+    int r, g, b = 0;
 public:
-    lever(int _x, int _y, int _ID) : entity(_x, _y) { ID = _ID; sworld.trig(); shape = "\\\\"; }
+    lever(int _x, int _y, int _r, int _g, int _b, int _ID) : entity(_x, _y) { ID = _ID; sworld.trig(); shape = "\033[38;2;" + to_string(_r) + ";" + to_string(_g) + ";" + to_string(_b) + "m\\\\\033[m"; r = _r; g = _g; b = _b; } // rgb from 0 to 255 pls :)
     void interact()
     {
         if (x == X && y == Y)
@@ -550,31 +581,87 @@ public:
             sworld.toggle();
             toggled = !toggled;
             if (toggled)
-                shape = "//";
+                shape = "\033[38;2;" + to_string(r) + ";" + to_string(g) + ";" + to_string(b) + "m//\033[m";
             else
-                shape = "\\\\";
+                shape = "\033[38;2;" + to_string(r) + ";" + to_string(g) + ";" + to_string(b) + "m\\\\\033[m";
         }
     }
-    void start() {}
+    int gettype()
+    {
+        return 3;
+    }
+    void start(map* m) {}
 };
 
 class door : public entity {
+private:
+    string doorShape = "==";
+    int r, g, b = 0;
 public:
-    door(int _x, int _y, int _ID) : entity(_x, _y) { ID = _ID; solid = true; shape = "=="; }
+    door(int _x, int _y, int _r, int _g, int _b, int _ID) : entity(_x, _y) { ID = _ID; solid = true; shape = "\033[38;2;" + to_string(r) + ";" + to_string(g) + ";" + to_string(b) + "m" + doorShape + "\033[m"; r = _r; g = _g; b = _b; }
     void trigger()
     {
         if (sworld.trigger[ID])
         {
             solid = false;
-            shape = "\033[38;2;100;100;100m==\033[m";
+            shape = "\033[38;2;" + to_string(r/2) + ";" + to_string(g/2) + ";" + to_string(b/2) + "m" + doorShape + "\033[m";
         }
         else
         {
             solid = true;
-            shape = "==";
+            shape = "\033[38;2;" + to_string(r) + ";" + to_string(g) + ";" + to_string(b) + "m" + doorShape + "\033[m";
         }
     }
-    void start() {}
+    int gettype()
+    {
+        return 4;
+    }
+    void start(map* m) {
+        bool n = (m->checkEntity(x - 1, y) == 4);
+        bool e = (m->checkEntity(x, y + 1) == 4);
+        bool s = (m->checkEntity(x + 1, y) == 4);
+        bool w = (m->checkEntity(x, y - 1) == 4);
+        if (n)
+            if (s)
+                if (e)
+                    if (w)
+                        doorShape = "╪╪";
+                    else
+                        doorShape = "╞╪";
+                else
+                    if (w)
+                        doorShape = "╪╡";
+                    else
+                        doorShape = "││";
+            else
+                if (e)
+                    if (w)
+                        doorShape = "╧╧";
+                    else
+                        doorShape = "╘╧";
+                else
+                    if (w)
+                        doorShape = "╧╛";
+                    else
+                        doorShape = "╘╛";
+        else
+            if (s)
+                if (e)
+                    if (w)
+                        doorShape = "╤╤";
+                    else
+                        doorShape = "╒╤";
+                else
+                    if (w)
+                        doorShape = "╤╕";
+                    else
+                        doorShape = "╒╕";
+            else if (!n && !e && !s && !w)
+                doorShape = "[]";
+            else
+                doorShape = "══";
+        shape = "\033[38;2;" + to_string(r) + ";" + to_string(g) + ";" + to_string(b) + "m" + doorShape + "\033[m";
+    }       
 };
 int fancyMod(int x, int y)
 {
@@ -1004,10 +1091,14 @@ void intro()
 
 int main()
 {
-    lever* l = new lever(1, 8, 0);
-    door* d1 = new door(2, 8, 0);
-    door* d2 = new door(2, 7, 0);
-    door* d3 = new door(2, 9, 0);
+    lever* l = new lever(1, 8, 255, 255, 0, 0);
+    door* d1 = new door(2, 8, 255, 255, 0, 0);
+    door* d2 = new door(2, 7, 255, 255, 0, 0);
+    door* d3 = new door(2, 9, 255, 255, 0, 0);
+    door* d4 = new door(1, 9, 255, 255, 0, 0);
+    door* d5 = new door(1, 10, 255, 255, 0, 0);
+    door* d6 = new door(2, 10, 255, 255, 0, 0);
+    door* d7 = new door(2, 6, 255, 255, 0, 0);
     bubble* b = new bubble(1, 7);
     bubble* b2 = new bubble(1, 6);
     bubble* b3 = new bubble(30, 33);
@@ -1022,6 +1113,12 @@ int main()
     aworld.addEntity(d1);
     aworld.addEntity(d2);
     aworld.addEntity(d3);
+    aworld.addEntity(d4);
+    aworld.addEntity(d5);
+    aworld.addEntity(d6);
+    aworld.addEntity(d7);
+    cout << aworld.moving.size();
+    aworld.start();
 
     Y = num / 2;
     X = 0;
@@ -1086,7 +1183,6 @@ int main()
         rx = rand() % num;
         ry = rand() % num;
     }
-
     sworld = aworld;
     cout << "e" << endl;
     //printWorld();
