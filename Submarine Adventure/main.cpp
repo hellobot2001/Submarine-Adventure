@@ -14,6 +14,34 @@ int Y = 0;
 int cX = 0;
 int cY = 0;
 
+double money = 0;
+int quota = 1;
+const int quotaMultiplier = 10;
+
+int maxO2 = 100; //       d1  | maximum oxygen
+int O2gen = 0; //         d2  | produce oxygen when not docked at surface
+int scuba = 0; //         d3  | distance from surface oxy gen works, oxy gen decreases farther from surface however
+
+double swindle = 1; //    d7  | lower quota
+double light = 0; //      d8  | larger light
+double glass = 3.5; //    d9  | farther sight
+double faulty = 0.5; //   d10 | chance of detecting false treasures
+double dish = 2.5; //     d11 | inspect scan radius
+int bargain = 3; //       d12 | number of upgrade choices each island
+int tolerance = 5; //     d13 | number of times pirates will let you dock before moving to the next location
+
+int O2 = maxO2;
+
+int attempts = 0;
+int ct = tolerance;
+int sub = 0; // 0 = docked, 1 = roaming, 2 = island
+int issue = 0; // 0 = none, 1 = tile blocking way, 2 = enttiy blocking way, 3 = world edge
+
+bool tutDesc = true;
+bool tutScan = true;
+bool tutGet = true;
+bool tutDock = true;
+
 double dist(int x1, int y1, int x2, int y2)
 {
     int dx = x1 - x2;
@@ -66,6 +94,7 @@ private:
     double value;
 public:
     int x, y;
+    bool t = false;
     treasure(int _x, int _y)
     {
         setName();
@@ -86,14 +115,17 @@ public:
     {
         int r = brand();
         int t = floor(pow(c, n));
-        return floor(maxLuck * pow(r % t, 1 / n));
+        int out = floor(maxLuck * pow(r % t, 1 / n));
+        if (out == 0)
+            return 1;
+        else return out;
     }
 
     void setName()
     {
-        int st = brand() % chance(20, (4 - luck));
-        int ms = brand() % chance(102, (4 - luck));
-        int mm = brand() % chance(22, (4 - luck));
+        int st = brand() % chance(20, (4.0 - luck));
+        int ms = brand() % chance(102, (4.0 - luck));
+        int mm = brand() % chance(22, (4.0 - luck));
         int me = brand() % chance(40, (4.0 - luck));
         int ty = brand() % chance(33, (4.0 - luck));
         name = name + state[st];
@@ -120,9 +152,9 @@ public:
 
 class entity // entities do not need to be static, and have unique actions when a game step occurs, when interacted with (inspected while overlapping with player, or, in the case that it is solid, ran into by the player), or when triggered (levers, buttons, pressure plates, etc. of the corresponding ID)
 {
-private:
+protected:
     int x, y, ID;
-    bool solid;
+    bool solid = false;
     string shape;
 public:
     entity(int _x, int _y)
@@ -130,11 +162,26 @@ public:
         x = _x;
         y = _y;
     }
-
+    bool solidity()
+    {
+        return solid;
+    }
+    int getx()
+    {
+        return x;
+    }
+    int gety()
+    {
+        return y;
+    }
+    string getShape()
+    {
+        return shape;
+    }
     virtual void start() = 0;
-    virtual void step() = 0;
-    virtual void interact() = 0;
-    virtual void trigger() = 0;
+    virtual void step() {}
+    virtual void interact() {}
+    virtual void trigger() {}
 };
 
 class map
@@ -146,14 +193,28 @@ private:
     vector<vector<tile>> main;
     vector<treasure> hidden;
     vector<entity*> moving;
-    vector<bool> trigger;
 public:
-    map(int num)
+    vector<bool> trigger;
+    map(int num, int s)
     {
         size = num;
+        seed = s;
         main = vector<vector<tile>>(num, vector<tile>(num, tile()));
     }
 
+    void trig()
+    {
+        trigger.push_back(false);
+    }
+    void swatch(int ID)
+    {
+        trigger[ID] = !trigger[ID];
+    }
+
+    vector<treasure> tlist()
+    {
+        return hidden;
+    }
     void setTile(double c, int _x, int _y, tile t)
     {
         if (c < rand() / (double)RAND_MAX)
@@ -171,7 +232,7 @@ public:
             for (int f = 0; f < (2 * r) + 1; f++)
             {
                 double d = sqrt(((px + i - x) * (px + i - x)) + ((py + f - y) * (py + f - y)));
-                if (((px + i > 0) && (py + f > 0)) && ((px + i < size) && (py + f < size)))
+                if (((px + i >= 0) && (py + f >= 0)) && ((px + i < size) && (py + f < size)))
                 {
                     if (d <= r)
                     {
@@ -184,12 +245,13 @@ public:
         }
     }
 
-    void genPath(int nr, int xr, int jmp, int l, double ci, double co, tile t) // world, min radius, max radius, max jump distance, # of circles created, inner chance, outer chance, tile
+    void genPath(int nr, int xr, int jmp, int l, double ci, double co, tile t) // min radius, max radius, max jump distance, # of circles created, inner chance, outer chance, tile
     {
         int sx = rand() % size;
         int sy = rand() % size;
         for (int i = 0; i < l; i++)
         {
+            if ((xr - nr) != 0)
             genCircle(sx, sy, (rand() % (xr - nr)) + nr, ci, co, t);
             sx = (sx + (rand() % ((2 * jmp) + 1)) - jmp) % size;
             sy = (sy + (rand() % ((2 * jmp) + 1)) - jmp) % size;
@@ -205,30 +267,30 @@ public:
 
     void caveGen()
     {
-        srand(seed);
-        int seed = rand();
-        srand(seed);
+        //srand(seed);
+        //int seed = rand();
+        //srand(seed);
         double irand = rand();
         double drand = irand / (double)RAND_MAX;
-        for (int i = 0; i < (int)(pow(log2(size), 1.75 + drand)); i++)
+        for (int i = 0; i < (int)(pow(log2(size), 2.5 + drand)); i++)
         {
             tile t = tile("██");
             t.walkable = false;
-            genPath(rand() % 3, (rand() % 8) + 3, rand() % 8, 50, 0, 1, t);
+            genPath(rand() % (int)max(0, log2(size) - 2), (rand() % (int)max(1, log2(size) - 1)) + (int)max(1, log2(size) - 1), rand() % (int)max(1, log2(size) - 1), (int)max(1, log2(size) - 1), 0, 1, t);
         }
         irand = rand();
         drand = irand / (double)RAND_MAX;
-        for (int i = 0; i < (int)(pow(log2(size), 2 + drand + prosperity)); i++)
-        {
-            int rx = rand() % size;
-            int ry = rand() % size;
-            while (!main[rx][ry].walkable || tr(rx, ry))
-            {
-                rx = rand() % size;
-                ry = rand() % size;
-            }
-            hidden.push_back(treasure(rx, ry));
-        }
+        //for (int i = 0; i < (int)(pow(log2(size), 2 + drand + prosperity)); i++)
+        //{
+        //    int rx = rand() % size;
+        //    int ry = rand() % size;
+        //    while (!main[rx][ry].walkable || tr(rx, ry))
+        //    {
+        //        rx = rand() % size;
+        //        ry = rand() % size;
+        //    }
+        //    hidden.push_back(treasure(rx, ry));
+        //}
         for (int i = 0; i < size; i++)
         {
             if (main[0][i].getShape() == "  ")
@@ -238,14 +300,49 @@ public:
         }
     }
 
+    void caveGen2()
+    {
+        //srand(seed);
+        //int seed = rand();
+        //srand(seed);
+        double irand = rand();
+        double drand = irand / (double)RAND_MAX;
+        for (int i = 0; i < (int)(pow(log2(size), 2.5 + drand)); i++)
+        {
+            tile t = tile("██");
+            t.walkable = false;
+            genPath(rand() % (int)max(0, log2(size) - 2), (rand() % (int)max(1, log2(size) - 1)) + (int)max(1, log2(size) - 1), rand() % (int)max(1, log2(size) - 1), (int)max(1, log2(size) - 1), 0, 1, t);
+        }
+        irand = rand();
+        drand = irand / (double)RAND_MAX;
+        //for (int i = 0; i < (int)(pow(log2(size), 2 + drand + prosperity)); i++)
+        //{
+        //    int rx = rand() % size;
+        //    int ry = rand() % size;
+        //    while (!main[rx][ry].walkable || tr(rx, ry))
+        //    {
+        //        rx = rand() % size;
+        //        ry = rand() % size;
+        //    }
+        //    hidden.push_back(treasure(rx, ry));
+        //}
+        //for (int i = 0; i < size; i++)
+        //{
+        //    if (main[0][i].getShape() == "  ")
+        //    {
+        //        main[0][i] = tile("~~");
+        //    }
+        //}
+    }
+
     void fullGen()
     {
         caveGen();
-        for (treasure t : hidden)
-            cout << t.getName() << ": " << t.getValue() << ", (" << t.x << ", " << t.y << ")" << endl;
+        //for (treasure t : hidden)
+        //    cout << t.getName() << ": " << t.getValue() << ", (" << t.x << ", " << t.y << ")" << endl;
     }
 
-    vector<tile> operator[](int i)
+    vector<tile>& operator[](int i)
     {
         return main[i];
     }
@@ -255,7 +352,28 @@ public:
         return x % y;
     }
 
-    void printVisible(double s) //world, sight radius
+    void printAll()
+    {
+        for (int i = 0; i < main.size() + 2; i++)
+            cout << "▒▒";
+        cout << endl;
+        for (int i = 0; i < main.size(); i++)
+        {
+            cout << "▒▒";
+            for (int f = 0; f < main.size(); f++)
+                if (i >= 0 && i < size && f >= 0 && f < size)
+                    if (main[fancyMod((i), size)][fancyMod((f), size)].getShape() == "  " && checkMoving(i, f) >= 0)
+                        cout << moving[checkMoving(i, f)]->getShape();
+                    else
+                        cout << main[fancyMod((i), size)][fancyMod((f), size)].getShape();
+            cout << "▒▒" << endl;
+        }
+        for (int i = 0; i < main.size() + 2; i++)
+            cout << "▒▒";
+        cout << endl;
+    }
+
+    void printVisible(double s) //sight radius
     {
         double duh = s;
         s = ceil(s);
@@ -275,7 +393,10 @@ public:
                     cout << "cↄ";
                 else if (d < duh)
                     if (cX + i - s >= 0 && cX + i - s < size && cY + f - s >= 0 && cY + f - s < size)
-                        cout << main[fancyMod((cX + i - s), size)][fancyMod((cY + f - s), size)].getShape();
+                        if (main[fancyMod((cX + i - s), size)][fancyMod((cY + f - s), size)].getShape() == "  " && checkMoving(cX + i - s, cY + f - s) >= 0)
+                            cout << moving[checkMoving(cX + i - s, cY + f - s)]->getShape();
+                        else
+                            cout << main[fancyMod((cX + i - s), size)][fancyMod((cY + f - s), size)].getShape();
                     else if (cX + i - s < 0)
                         cout << "  ";
                     else
@@ -289,58 +410,176 @@ public:
 
     void step()
     {
-
+        for (entity* e : moving)
+            e->step();
+    }
+    void toggle()
+    {
+        for (int i = 0; i < moving.size(); i++)
+            moving[i]->trigger();
     }
     void interact(double d)
     {
         tile f("!!");
         f.tr = true;
         for (treasure t : hidden)
-            if (dist(X, Y, t.x, t.y) < d)
+            if (dist(X, Y, t.x, t.y) < d && !t.t)
+            {
                 main[t.x][t.y] = f;
+                cout << t.t << " " << X << " " << Y << endl;
+            }
+        for (entity* e : moving)
+        {
+            e->interact();
+            e->trigger();
+        }
     }
-    //void trigger()
-    //{
+    bool checkSolid(int x, int y)
+    {
+        for (int i = 0; i < moving.size(); i++)
+            if (moving[i]->solidity() && moving[i]->getx() == x && moving[i]->gety() == y)
+                return true;
+        return false;
+    }
+    int checkMoving(int x, int y)
+    {
+        for (int i = 0; i < moving.size(); i++)
+            if (moving[i]->getx() == x && moving[i]->gety() == y)
+                return i;
+        return -1;
+    }
+    void addEntity(entity* e)
+    {
+        moving.push_back(e);
+    }
+    void addTreasure(treasure t)
+    {
+        hidden.push_back(t);
+    }
+    void swapT(int i)
+    {
+        hidden[i].t = !hidden[i].t;
+    }
+    bool raycast(int x1, int y1, int x2, int y2)
+    {
+        int dx = x2 - x1;
+        int dy = y2 - y1;
 
-    //}
+        int steps = max(abs(dx), abs(dy));
+
+        if (steps == 0)
+        {
+            return main[x1][y1].walkable;
+        }
+
+        double xInc = (double)dx / steps;
+        double yInc = (double)dy / steps;
+
+
+        double x = x1;
+        double y = y1;
+
+        for (int i = 0; i <= steps; i++)
+        {
+            int currentX = floor(x);
+            int currentY = floor(y);
+
+            if (currentX >= 0 && currentX < size)
+            {
+                if (!main[x][y].walkable)
+                    return false;
+            }
+
+            x += xInc;
+            y += yInc;
+        }
+        return true;
+    }
 };
 
+int num = 64;
+map aworld(num, (int)time(0));
+map bworld(num, 10);
+map sworld(num, (int)time(0));
+
+class bubble : public entity {
+    //private:
+    //    int life;
+public:
+    bubble(int _x, int _y) : entity(_x, _y) { shape = "()"; };
+    void step()
+    {
+        if (x == X && y == Y)
+            if (O2 < maxO2 - 5)
+            {
+                O2 += 5;
+            }
+            else
+                O2 = maxO2;
+    }
+    void start() {}
+};
+
+//class vent : public entity {
+//private: 
+//    int quota;
+//    int cnt = 0;
+//public:
+//    vent(int _x, int _y) : entity(_x, _y)
+//    {
+//        solid = false;
+//        quota = (rand() % 7) + 2;
+//        shape = "/\\";
+//    }
+//    void step()
+//    {
+//
+//    }
+//};
+
+class lever : public entity {
+private:
+    bool toggled = false;
+public:
+    lever(int _x, int _y, int _ID) : entity(_x, _y) { ID = _ID; sworld.trig(); shape = "\\\\"; }
+    void interact()
+    {
+        if (x == X && y == Y)
+        {
+            sworld.swatch(ID);
+            sworld.toggle();
+            toggled = !toggled;
+            if (toggled)
+                shape = "//";
+            else
+                shape = "\\\\";
+        }
+    }
+    void start() {}
+};
+
+class door : public entity {
+public:
+    door(int _x, int _y, int _ID) : entity(_x, _y) { ID = _ID; solid = true; shape = "=="; }
+    void trigger()
+    {
+        if (sworld.trigger[ID])
+        {
+            solid = false;
+            shape = "\033[38;2;100;100;100m==\033[m";
+        }
+        else
+        {
+            solid = true;
+            shape = "==";
+        }
+    }
+    void start() {}
+};
 int fancyMod(int x, int y)
 {
-    cout << x % y + y << endl;
     return x % y;
 }
-//temp regular world of size num
-int num = 256;
-map sworld(num);
-
-double money = 0;
-int quota = 1;
-const int quotaMultiplier = 10;
-
-int maxO2 = 100; //       d1  | maximum oxygen
-int O2gen = 0; //         d2  | produce oxygen when not docked at surface
-int scuba = 0; //         d3  | distance from surface oxy gen works, oxy gen decreases farther from surface however
-
-double swindle = 1; //    d7  | lower quota
-double light = 0; //      d8  | larger light
-double glass = 3.5; //    d9  | farther sight
-double faulty = 0.5; //   d10 | chance of detecting false treasures
-double dish = 2.5; //     d11 | inspect scan radius
-int bargain = 3; //       d12 | number of upgrade choices each island
-int tolerance = 5; //     d13 | number of times pirates will let you dock before moving to the next location
-
-int O2 = maxO2;
-
-int attempts = 0;
-int ct = tolerance;
-int sub = 0; // 0 = docked, 1 = roaming, 2 = island
-int issue = 0; // 0 = none, 1 = tile blocking way, 2 = enttiy blocking way, 3 = world edge
-
-bool tutDesc = true;
-bool tutScan = true;
-bool tutGet = true;
-bool tutDock = true;
 
 vector<treasure> treasureList;
 
@@ -364,7 +603,7 @@ string rgbackground(int r, int g, int b, string str)
 }
 string scatterTile()
 {
-    int i = floor(pow(rand() % 40, 3)/1600.0);
+    int i = floor(pow(rand() % 40, 3) / 1600.0);
     return scatter[i] + scatter[i];
 }
 string scatterTile(int seed)
@@ -377,11 +616,11 @@ string scatterTile(int seed)
 void rgbTest()
 {
     cout << endl << "world of more color!" << endl;
-    for (int i = 0; i <= 256; i+=16)
+    for (int i = 0; i <= 256; i += 16)
     {
-        for (int f = 0; f <= 256; f+=16)
+        for (int f = 0; f <= 256; f += 16)
         {
-            for (int d = 0; d <= 256; d+=16)
+            for (int d = 0; d <= 256; d += 16)
             {
                 cout << rgb(i, f, d, scatterTile());
             }
@@ -400,7 +639,7 @@ bool query(string q)
         return true;
     else
         return false;
-    
+
 }
 
 void printWorld()
@@ -440,11 +679,11 @@ void printO2()
 void printError(int event)
 {
     issue = 0;
-    if (event = 1)
+    if (event == 1)
         cout << "there's a tile here!" << endl;
-    if (event = 2)
+    if (event == 2)
         cout << "there's something here!" << endl;
-    if (event = 3)
+    if (event == 3)
         cout << "you can't go any further!" << endl;
 }
 void UI(int event) // 0 to clear screen
@@ -498,6 +737,7 @@ void UI(int event) // 0 to clear screen
         cout << "move: [wasd] | inspect: [i] | list treasure: [t] | surface: [q] | quit: [p]" << endl;
         printO2();
         sworld.printVisible(glass);
+        printError(issue);
         if (tutScan)
         {
             cout << "YARRGH use yer TRUSTY SCANNER [i] to locate booty !!! it don't be the most reliable, though." << endl;
@@ -511,15 +751,32 @@ void UI(int event) // 0 to clear screen
             cout << "YARRGH return to our ship [q] and give us yer treasures !!!" << endl;
         }
     }
-    if (event == 4) // treasure
+    if (event == 4) // roaming, treasure found
     {
-        printTreasures();
+        cout << "move: [wasd] | inspect: [i] | list treasure: [t] | surface: [q] | quit: [p]" << endl;
+        printO2();
+        sworld.printVisible(glass);
+        printError(issue);
+        if (tutScan)
+        {
+            cout << "YARRGH use yer TRUSTY SCANNER [i] to locate booty !!! it don't be the most reliable, though." << endl;
+        }
+        if (tutGet && !tutScan)
+        {
+            cout << "YARRGH when ye FIND treasure (!! or ??) go DRIVE OVER TO IT!!! WE DONT PICK THINGS UP FOR YE!!!" << endl;
+        }
+        if (!tutGet && tutDock)
+        {
+            cout << "YARRGH return to our ship [q] and give us yer treasures !!!" << endl;
+        }
+        cout << "you got \033[38;2;255;215;0m" << treasureList[treasureList.size() - 1].getName() << "\033[m worth \033[38;2;255;215;0m" << treasureList[treasureList.size() - 1].getValue() << "\033[m doubloons!" << endl;
     }
     if (event == 10) // shop
         event; // placeholder for shop UI
 }
 void restart(int event)
 {
+    char k;
     UI(0);
     if (event == 0) // ran out of oxygen
         cout << "\033[38;2;200;0;0myou ran out of oxygen and died.\033[m" << endl;
@@ -537,8 +794,8 @@ void restart(int event)
         cout << "\033[38;2;200;0;0mhow...?\033[m" << endl;
 
     cout << "enter anything to restart: ";
-    cin;
-    sworld = map(num);
+    cin >> k;
+    sworld = map(num, (int)time(0));
     sworld.fullGen();
     quota = 1;
     money = 0;
@@ -555,6 +812,7 @@ void restart(int event)
     dish = 2.5; //        d11 | inspect scan radius
     bargain = 3; //       d12 | number of upgrade choices each island
     tolerance = 5; //     d13 | number of times pirates will let you dock before moving to the next location
+    ct = 5;
     sub = 0;
     UI(1);
 }
@@ -564,6 +822,7 @@ void ascend()
     O2 = maxO2;
     sub = 0;
     ct--;
+    UI(2);
     if (ct <= 0)
     {
         if (money >= quota * quota * quotaMultiplier * swindle)
@@ -573,69 +832,108 @@ void ascend()
         }
         else
         {
-            O2 = 0;
-            cout << "\033[38;2;200;0;0mYARRR YE BE SLEEPIN WITH THE FISHIESSS !!!!!\033[m" << endl;
-            quota = 1;
+            restart(1);
         }
     }
 }
+bool a = true;
+//bool query(string arg)
+//{
+//    char k;
+//    cout << arg << " y/n: ";
+//    cin >> k;
+//    if (k == 'y')
+//        return true;
+//    else if (k == 'n')
+//        return false;
+//    else
+//        return query(arg);
+//}
+void moveP(int x, int y)
+{
+    if (x < num && x >= 0 && y < num && y >= 0)
+        if (!sworld.checkSolid(x, y))
+            if (sworld[x][y].walkable)
+            {
+                X = x; Y = y;
+                if (X == 0 && O2 < maxO2)
+                    O2++;
+                if (X > 0)
+                    O2--;
+            }
+            else
+                issue = 1;
+        else
+            issue = 2;
+    else
+        if (X == num - 1 && a)
+        {
+            if (query("proceed to the depths?"))
+            {
+                aworld = sworld;
+                sworld = bworld;
+                X = 0;
+                a = !a;
+            }
+        }
+        else if (X == 0 && !a)
+        {
+            if (query("return to the shallow water?"))
+            {
+                bworld = sworld;
+                sworld = aworld;
+                X = num - 1;
+                a = !a;
+            }
+        }
+        else
+            issue = 3;
+    sworld.step();
+}
+
 void subControl(char c)
 {
+    bool tres = false;
     if (c == 'w')
-        if (X > 0)
-        {
-            if (sworld[fancyMod((X - 1), num)][Y].walkable)
-                X--;
-            else
-                issue = 1;
-        }
-        else
-            issue = 3;
+        moveP(X - 1, Y);
     if (c == 's')
-        if (X < num - 1)
-        {
-            if (sworld[fancyMod((X + 1), num)][Y].walkable)
-                X++;
-            else
-                issue = 1;
-        }
-        else
-            issue = 3;
+        moveP(X + 1, Y);
     if (c == 'a')
-        if (sworld[X][fancyMod((Y - 1), num)].walkable && Y > 0)
-        {
-            Y--;
-        }
-        else
-            cout << "can't go there!" << endl;
+        moveP(X, Y - 1);
     if (c == 'd')
-        if (sworld[X][fancyMod((Y + 1), num)].walkable && Y < num - 1)
-        {
-            Y++;
-            printO2();
-        }
-        else
-            cout << "can't go there!" << endl;
+        moveP(X, Y + 1);
     if (sworld[fancyMod(X, num)][fancyMod(Y, num)].tr)
     {
         tutGet = false;
-        treasureList.push_back(treasure());
-        cout << "you got \033[38;2;255;215;0m" << treasureList[treasureList.size() - 1].getName() << "\033[m worth \033[38;2;255;215;0m" << treasureList[treasureList.size() - 1].getValue() << "\033[m doubloons!" << endl;
-        sworld[fancyMod(X, num)][fancyMod(Y, num)] = tile("..");
+        for (int k = 0; k < sworld.tlist().size(); k++)
+        {
+            treasure i = sworld.tlist()[k];
+            if (i.x == X && i.y == Y && i.t == false)
+            {
+                treasureList.push_back(i);
+                sworld.swapT(k);
+                tres = true;
+                sworld[X][Y] = tile("..");
+            }
+        }
     }
     if (c == 'i')
     {
+        tutScan = false;
         sworld.interact(dish);
     }
-    sworld.printVisible(glass);
+    //sworld.printVisible(glass);
     if (c == 't')
     {
         printTreasures();
     }
-    if (c == 'q' && X == 0)
+    else if (c == 'q' && X == 0)
         ascend();
     else
-        UI(3);
+        if (tres)
+            UI(4);
+        else
+            UI(3);
 }
 
 void shopControl(char c)
@@ -663,7 +961,7 @@ void shopControl(char c)
         }
         UI(1);
     }
-    
+
 }
 
 void intro()
@@ -705,13 +1003,96 @@ void intro()
 
 int main()
 {
-    intro();
-    srand(start);
+    lever* l = new lever(1, 8, 0);
+    door* d1 = new door(2, 8, 0);
+    door* d2 = new door(2, 7, 0);
+    door* d3 = new door(2, 9, 0);
+    bubble* b = new bubble(1, 7);
+    bubble* b2 = new bubble(1, 6);
+    bubble* b3 = new bubble(30, 33);
+    bubble* b4 = new bubble(48, 62);
+    bubble* b5 = new bubble(48, 63);
+    aworld.addEntity(b);
+    aworld.addEntity(b2);
+    aworld.addEntity(b3);
+    aworld.addEntity(b4);
+    aworld.addEntity(b5);
+    aworld.addEntity(l);
+    aworld.addEntity(d1);
+    aworld.addEntity(d2);
+    aworld.addEntity(d3);
+
+    Y = num / 2;
+    X = 0;
+    //cout << (int)time(0) << endl;
+    //intro();
+    cout << "e" << endl;
+    //srand((int)time(0));
+    srand(0);
 #ifdef _WIN32
     SetConsoleOutputCP(CP_UTF8);
 #endif
-    sworld.fullGen();
+
+    cout << "e" << endl;
+    aworld.fullGen();
+
+    tile tr1("!!");
+    tr1.tr = true;
+    for (int i = 0; i < 5; i++)
+        for (int f = 0; f < 5; f++)
+            aworld[i][f + 6] = tile();
+    aworld[32][39] = tile();
+    aworld.addTreasure(treasure(3, 8));
+    aworld.addTreasure(treasure(3, 7));
+    aworld.addTreasure(treasure(3, 9));
+    aworld.trigger.push_back(0);
+    aworld[3][8] = tr1;
+    aworld[3][7] = tr1;
+    aworld[3][9] = tr1;
+    bworld.caveGen2();
+    for (int i = 0; i < 99; i++)
+        bworld.genPath(1, 5, 2, 5, 0, 1, tile());
+
+    for (int i = 0; i < num; i++)
+    {
+        bworld[0][i] = tile();
+        aworld[63][i] = tile();
+    }
+    int rx = 0;
+    int ry = 0;
+    for (int i = 0; i < num/2; i++)
+    {
+        while (!bworld[rx][ry].walkable)
+        {
+            rx = rand() % num;
+            ry = rand() % num;
+        }
+        bubble* bk = new bubble(rx, ry);
+        bworld.addEntity(bk);
+        rx = rand() % num;
+        ry = rand() % num;
+    }
+    for (int i = 0; i < num / 2; i++)
+    {
+        while (!bworld[rx][ry].walkable)
+        {
+            rx = rand() % num;
+            ry = rand() % num;
+        }
+        bubble* bk = new bubble(rx, ry);
+        bworld.addTreasure(treasure(rx, ry));
+        bworld[rx][ry] = tr1;
+        rx = rand() % num;
+        ry = rand() % num;
+    }
+
+    sworld = aworld;
+    cout << "e" << endl;
     //printWorld();
+    Y = 8;
+    UI(1);
+    //bworld.printAll();
+    //cout << sworld.trigger[0];
     while (true)
     {
         cout << "action: ";
@@ -719,19 +1100,23 @@ int main()
         //if (_kbhit())
         //{
             //c = _getch();
-            cin >> c;
-            c = (char)tolower(c);
-            if (sub)
-                subControl(c);
-            else
-                shopControl(c);
-            if (c == 'p')
-                break;
-            if (O2 <= 0)
-            {
-                restart(0);
-                ascend();
-            }
+        cin >> c;
+        c = (char)tolower(c);
+        if (sub)
+            subControl(c);
+        else
+            shopControl(c);
+        if (c == 'p')
+            break;
+        if (O2 <= 0)
+        {
+            ascend();
+            restart(0);
+            X = 0;
+            Y = num / 2;
+        }
+        //sworld.printAll();
+        //cout << sworld.tlist().size();
         //}
     }
 }
