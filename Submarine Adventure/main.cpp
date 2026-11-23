@@ -857,7 +857,7 @@ void moveP(int x, int y)
             if (sworld[x][y].walkable)
             {
                 X = x; Y = y;
-                if (X == 0 && O2 < maxO2)
+                if (X == 0 && O2 < maxO2 && a)
                     O2++;
                 if (X > 0)
                     O2--;
@@ -1073,7 +1073,7 @@ int main()
         rx = rand() % num;
         ry = rand() % num;
     }
-    for (int i = 0; i < num / 2; i++)
+    for (int i = 0; i < 100; i++)
     {
         while (!bworld[rx][ry].walkable)
         {
@@ -1111,10 +1111,10 @@ int main()
             break;
         if (O2 <= 0)
         {
-            ascend();
-            restart(0);
             X = 0;
             Y = 8;
+            ascend();
+            restart(0);
         }
         //sworld.printAll();
         //cout << sworld.tlist().size();
