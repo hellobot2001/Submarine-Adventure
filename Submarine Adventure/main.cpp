@@ -795,8 +795,8 @@ void restart(int event)
 
     cout << "enter anything to restart: ";
     cin >> k;
-    sworld = map(num, (int)time(0));
-    sworld.fullGen();
+    //sworld = map(num, (int)time(0));
+    //sworld.fullGen();
     quota = 1;
     money = 0;
     maxO2 = 100; //       d1  | maximum oxygen
@@ -814,6 +814,7 @@ void restart(int event)
     tolerance = 5; //     d13 | number of times pirates will let you dock before moving to the next location
     ct = 5;
     sub = 0;
+    sworld = aworld;
     UI(1);
 }
 
