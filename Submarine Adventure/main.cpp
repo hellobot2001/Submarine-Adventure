@@ -221,6 +221,32 @@ public:
     }
     void start(map* m) {}
 };
+class lever : public entity {
+private:
+    bool toggled = false;
+    int r, g, b = 0;
+public:
+    lever(int _x, int _y, int _r, int _g, int _b, int _ID) : entity(_x, _y) { ID = _ID; shape = "\033[38;2;" + to_string(_r) + ";" + to_string(_g) + ";" + to_string(_b) + "m\\\\\033[m"; r = _r; g = _g; b = _b; } // rgb from 0 to 255 pls :)
+    void interact();
+    int gettype()
+    {
+        return 3;
+    }
+    void start(map* m) {}
+};
+class door : public entity {
+private:
+    string doorShape = "==";
+    int r, g, b = 0;
+public:
+    door(int _x, int _y, int _r, int _g, int _b, int _ID) : entity(_x, _y) { ID = _ID; solid = true; shape = "\033[38;2;" + to_string(r) + ";" + to_string(g) + ";" + to_string(b) + "m" + doorShape + "\033[m"; r = _r; g = _g; b = _b; }
+    void trigger();
+    int gettype()
+    {
+        return 4;
+    }
+    void start(map* m);
+};
 vector<treasure> treasureList;
 
 class map
@@ -232,6 +258,7 @@ private:
     vector<vector<tile>> main;
     vector<treasure> hidden;
 public:
+    int maxState = -10;
     vector<entity*> moving;
     vector<bool> trigger;
     map(int num, int s)
@@ -414,7 +441,7 @@ public:
                 int ry = p.y + dy[i];
                 if (rx >= 0 && rx < size && ry >= 0 && ry < size)
                 {
-                    cout << main[rx][ry].state << endl;
+                    //cout << main[rx][ry].state << endl;
                     if (!main[rx][ry].walkable)
                         main[rx][ry].state = -1;
                     else if (main[rx][ry].state == -10 && !main[rx][ry].checked)
@@ -428,6 +455,7 @@ public:
     }
     void setStates() //sets states of all tiles in this map. -10 is undefined, -3 is door, -2 is unrevealed wall, -1 is revealed wall, everything else is walkable space.
     {
+        clearStates();
         int state = 0;
         for (int i = 0; i < moving.size(); i++)
         {
@@ -436,7 +464,7 @@ public:
         }
         for (int i = 0; i < size; i++)
             for (int f = 0; f < size; f++)
-                if (!main[i][f].checked)
+                if (!main[i][f].checked && main[i][f].state == -10)
                 {
                     if (main[i][f].walkable)
                     {
@@ -446,11 +474,11 @@ public:
                     }
                     else
                     {
-                        if (main[i][f].state == -10)
                         main[i][f].state = -2;
                         main[i][f].checked = true;
                     }
                 }
+        maxState = state;
     }
     void fullGen()
     {
@@ -459,9 +487,59 @@ public:
         //    cout << t.getName() << ": " << t.getValue() << ", (" << t.x << ", " << t.y << ")" << endl;
     }
 
+    void clearStates()
+    {
+        for (int i = 0; i < size; i++)
+            for (int f = 0; f < size; f++)
+            {
+                main[i][f].state = -10;
+                main[i][f].checked = false;
+            }
+    }
+
+    void genDoor(int r, int g, int b, int ID)
+    {
+        setStates();
+        int rx = 0;
+        int ry = 0;
+        int dr = rand() % 4;
+        int dx[] = { -1, 1, 0, 0 };
+        int dy[] = { 0, 0, -1, 1 };
+        while (main[rx][ry].state != -1)
+        {
+            rx = rand() % size;
+            ry = rand() % size;
+        }
+        //cout << "r: (" << rx << ", " << ry << "), with " << main[rx][ry].state << endl;
+        for (int i = dr; i < 4 + dr; i++)
+        {
+            int nx = rx + dx[i % 4];
+            int ny = ry + dy[i % 4];
+            if (nx >= 0 && nx < size && ny >= 0 && ny < size)
+            {
+                //cout << "    r: (" << nx << ", " << ny << "), with " << main[nx][ny].state << endl;
+                if (main[nx][ny].state > -1)
+                {
+                    dr = i % 4;
+                    break;
+                }
+            }
+        }
+        int px = rx + dx[dr];
+        int py = ry + dy[dr];
+        while (px >= 0 && px < size && py >= 0 && py < size && main[px][py].state > -1)
+        {
+            door* nd = new door(px, py, r, g, b, ID);
+            addEntity(nd);
+            px = px + dx[dr];
+            py = py + dy[dr];
+        }
+        //clearStates();
+    }
 
     void depthsGen()
     {
+        main = vector<vector<tile>>(size, vector<tile>(size, tile()));
         caveGen2();
         for (int i = 0; i < 99; i++)
             genPath(1, 5, 2, 5, 0, 1, tile());
@@ -471,11 +549,42 @@ public:
             main[0][i] = tile();
             main[63][i] = tile();
         }
-        int rx = 0;
-        int ry = 0;
+        int r = rand() % 256;
+        int g = rand() % 256;
+        int b = rand() % 256;
+        //setStates();
+        //printStates();
+        //clearStates();
+        for (int i = 0; i < 15; i++)
+            genDoor(r, g, b, 0);
+        int rx = rand() % size;
+        int ry = rand() % size;
+        while (main[rx][ry].state != 0)
+        {
+            rx = rand() % size;
+            ry = rand() % size;
+        }
+        lever* lr = new lever(rx, ry, r, g, b, 0);
+        r = rand() % 256;
+        g = rand() % 256;
+        b = rand() % 256;
+        for (int i = 0; i < 10; i++)
+            genDoor(r, g, b, 1);
+        //setStates();
+        //printStates();
+        rx = rand() % size;
+        ry = rand() % size;
+        while (main[rx][ry].state != rand() % maxState)
+        {
+            rx = rand() % size;
+            ry = rand() % size;
+        }
+        lever* lr2 = new lever(rx, ry, r, g, b, 1);
+        addEntity(lr2);
+        addEntity(lr);
         for (int i = 0; i < size / 2; i++)
         {
-            while (!main[rx][ry].walkable)
+            while (!main[rx][ry].walkable || checkSolid(rx, ry))
             {
                 rx = rand() % size;
                 ry = rand() % size;
@@ -487,7 +596,7 @@ public:
         }
         for (int i = 0; i < 100; i++)
         {
-            while (!main[rx][ry].walkable)
+            while (!main[rx][ry].walkable || checkSolid(rx, ry))
             {
                 rx = rand() % size;
                 ry = rand() % size;
@@ -500,6 +609,8 @@ public:
             rx = rand() % size;
             ry = rand() % size;
         }
+        printAll();
+        start();
     }
 
     vector<tile>& operator[](int i)
@@ -678,6 +789,7 @@ public:
     }
     void addEntity(entity* e)
     {
+        //cout << e->gettype() << endl;
         if (e->gettype() == 4 || e->gettype() == 3)
             if (e->getID() >= trigger.size())
                 trigger.push_back(false);
@@ -732,7 +844,78 @@ int num = 64;
 map aworld(num, (int)time(0));
 map bworld(num, 10);
 map sworld(num, (int)time(0));
-
+void lever::interact()
+{
+    if (x == X && y == Y)
+    {
+        sworld.swatch(ID);
+        sworld.toggle();
+        toggled = !toggled;
+        if (toggled)
+            shape = "\033[38;2;" + to_string(r) + ";" + to_string(g) + ";" + to_string(b) + "m//\033[m";
+        else
+            shape = "\033[38;2;" + to_string(r) + ";" + to_string(g) + ";" + to_string(b) + "m\\\\\033[m";
+    }
+}
+void door::trigger()
+{
+    if (sworld.trigger[ID])
+    {
+        solid = false;
+        shape = "\033[38;2;" + to_string(r / 2) + ";" + to_string(g / 2) + ";" + to_string(b / 2) + "m" + doorShape + "\033[m";
+    }
+    else
+    {
+        solid = true;
+        shape = "\033[38;2;" + to_string(r) + ";" + to_string(g) + ";" + to_string(b) + "m" + doorShape + "\033[m";
+    }
+}
+void door::start(map* m) {
+    bool n = (m->checkEntity(x - 1, y) == 4);
+    bool e = (m->checkEntity(x, y + 1) == 4);
+    bool s = (m->checkEntity(x + 1, y) == 4);
+    bool w = (m->checkEntity(x, y - 1) == 4);
+    if (n)
+        if (s)
+            if (e)
+                if (w)
+                    doorShape = "╪╪";
+                else
+                    doorShape = "╞╪";
+            else
+                if (w)
+                    doorShape = "╪╡";
+                else
+                    doorShape = "││";
+        else
+            if (e)
+                if (w)
+                    doorShape = "╧╧";
+                else
+                    doorShape = "╘╧";
+            else
+                if (w)
+                    doorShape = "╧╛";
+                else
+                    doorShape = "╘╛";
+    else
+        if (s)
+            if (e)
+                if (w)
+                    doorShape = "╤╤";
+                else
+                    doorShape = "╒╤";
+            else
+                if (w)
+                    doorShape = "╤╕";
+                else
+                    doorShape = "╒╕";
+        else if (!n && !e && !s && !w)
+            doorShape = "[]";
+        else
+            doorShape = "══";
+    shape = "\033[38;2;" + to_string(r) + ";" + to_string(g) + ";" + to_string(b) + "m" + doorShape + "\033[m";
+}
 
 //class vent : public entity {
 //private: 
@@ -755,102 +938,7 @@ map sworld(num, (int)time(0));
 //    }
 //};
 
-class lever : public entity {
-private:
-    bool toggled = false;
-    int r, g, b = 0;
-public:
-    lever(int _x, int _y, int _r, int _g, int _b, int _ID) : entity(_x, _y) { ID = _ID; sworld.trig(); shape = "\033[38;2;" + to_string(_r) + ";" + to_string(_g) + ";" + to_string(_b) + "m\\\\\033[m"; r = _r; g = _g; b = _b; } // rgb from 0 to 255 pls :)
-    void interact()
-    {
-        if (x == X && y == Y)
-        {
-            sworld.swatch(ID);
-            sworld.toggle();
-            toggled = !toggled;
-            if (toggled)
-                shape = "\033[38;2;" + to_string(r) + ";" + to_string(g) + ";" + to_string(b) + "m//\033[m";
-            else
-                shape = "\033[38;2;" + to_string(r) + ";" + to_string(g) + ";" + to_string(b) + "m\\\\\033[m";
-        }
-    }
-    int gettype()
-    {
-        return 3;
-    }
-    void start(map* m) {}
-};
 
-class door : public entity {
-private:
-    string doorShape = "==";
-    int r, g, b = 0;
-public:
-    door(int _x, int _y, int _r, int _g, int _b, int _ID) : entity(_x, _y) { ID = _ID; solid = true; shape = "\033[38;2;" + to_string(r) + ";" + to_string(g) + ";" + to_string(b) + "m" + doorShape + "\033[m"; r = _r; g = _g; b = _b; }
-    void trigger()
-    {
-        if (sworld.trigger[ID])
-        {
-            solid = false;
-            shape = "\033[38;2;" + to_string(r/2) + ";" + to_string(g/2) + ";" + to_string(b/2) + "m" + doorShape + "\033[m";
-        }
-        else
-        {
-            solid = true;
-            shape = "\033[38;2;" + to_string(r) + ";" + to_string(g) + ";" + to_string(b) + "m" + doorShape + "\033[m";
-        }
-    }
-    int gettype()
-    {
-        return 4;
-    }
-    void start(map* m) {
-        bool n = (m->checkEntity(x - 1, y) == 4);
-        bool e = (m->checkEntity(x, y + 1) == 4);
-        bool s = (m->checkEntity(x + 1, y) == 4);
-        bool w = (m->checkEntity(x, y - 1) == 4);
-        if (n)
-            if (s)
-                if (e)
-                    if (w)
-                        doorShape = "╪╪";
-                    else
-                        doorShape = "╞╪";
-                else
-                    if (w)
-                        doorShape = "╪╡";
-                    else
-                        doorShape = "││";
-            else
-                if (e)
-                    if (w)
-                        doorShape = "╧╧";
-                    else
-                        doorShape = "╘╧";
-                else
-                    if (w)
-                        doorShape = "╧╛";
-                    else
-                        doorShape = "╘╛";
-        else
-            if (s)
-                if (e)
-                    if (w)
-                        doorShape = "╤╤";
-                    else
-                        doorShape = "╒╤";
-                else
-                    if (w)
-                        doorShape = "╤╕";
-                    else
-                        doorShape = "╒╕";
-            else if (!n && !e && !s && !w)
-                doorShape = "[]";
-            else
-                doorShape = "══";
-        shape = "\033[38;2;" + to_string(r) + ";" + to_string(g) + ";" + to_string(b) + "m" + doorShape + "\033[m";
-    }       
-};
 int fancyMod(int x, int y)
 {
     return x % y;
@@ -1329,12 +1417,15 @@ int main()
     aworld[3][8] = tr1;
     aworld[3][7] = tr1;
     aworld[3][9] = tr1;
+    if (query("generate the depths COMPLETELY randomly? note that you can look at the map before playing, scroll up before entering anything else. you may have to increase window size to fit the whole map."))
+    {
+        srand(time(0));
+    }
     bworld.depthsGen();
     for (int i = 0; i < num; i++)
     {
         aworld[63][i] = tile();
     }
-    bworld.setStates();
     sworld = aworld;
     //cout << "e" << endl;
     //printWorld();
