@@ -1435,6 +1435,13 @@ int main()
     cout << "how many random doors? I recommend 12." << endl << "enter a whole number: ";
     cin >> bb;
     bworld.depthsGen(a, bb);
+
+    if (query("show debug states of each tile in the depths?"))
+    {
+        bworld.printStates();
+        cout << "enter anything to continue." << endl;
+        cin >> a;
+    }
     for (int i = 0; i < num; i++)
     {
         aworld[63][i] = tile();
