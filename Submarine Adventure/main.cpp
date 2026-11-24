@@ -6,10 +6,17 @@
 #ifdef _WIN32
 #include <windows.h>
 #endif
+#include <queue>
 
 using namespace std;
 class map;
-
+string rgb(int r, int g, int b, string str)
+{
+    r = max(min(r, 255), 0);
+    g = max(min(g, 255), 0);
+    b = max(min(b, 255), 0);
+    return "\033[0;38;2;" + to_string(r) + ";" + to_string(g) + ";" + to_string(b) + "m" + str + "\033[m";
+}
 int X = 0;
 int Y = 0;
 int cX = 0;
@@ -51,14 +58,15 @@ double dist(int x1, int y1, int x2, int y2)
 }
 
 double luck = 0; //       d4  | liklihood of getting better treasure
-double maxLuck = 0.2; //  d5  | highest treasure component proportional to number of components
+double maxLuck = 0.5; //  d5  | highest treasure component proportional to number of components
 double prosperity = 0; // d6  | more treasure
 
 class tile // tiles are static.
 {
-private:
-    string shape;
 public:
+    string shape;
+    bool checked = false;
+    int state = -10;
     bool walkable = true;
     bool tr = false;
     tile(string h)
@@ -183,11 +191,37 @@ public:
     {
         return shape;
     }
+    int getID()
+    {
+        return ID;
+    }
     virtual void start(map* m) {}
     virtual void step() {}
     virtual void interact() {}
     virtual void trigger() {}
 };
+class bubble : public entity {
+    //private:
+    //    int life;
+public:
+    bubble(int _x, int _y) : entity(_x, _y) { shape = "()"; };
+    void step()
+    {
+        if (x == X && y == Y)
+            if (O2 < maxO2 - 5)
+            {
+                O2 += 5;
+            }
+            else
+                O2 = maxO2;
+    }
+    int gettype()
+    {
+        return 1;
+    }
+    void start(map* m) {}
+};
+vector<treasure> treasureList;
 
 class map
 {
@@ -338,12 +372,134 @@ public:
         //    }
         //}
     }
-
+    class point {
+    public:
+        int x;
+        int y;
+        point(int _x, int _y)
+        {
+            x = _x; y = _y;
+        }
+    };
+    void collapse(int x, int y, int ID)
+    {
+        if (x < 0 || x >= size || y < 0 || y >= size)
+            return;
+        if (main[x][y].state >= -1 || main[x][y].checked)
+        {
+            main[x][y].checked = true;
+            return;
+        }
+        if (!main[x][y].walkable)
+        {
+            main[x][y].state = -1;
+            main[x][y].checked = true;
+            return;
+        }
+        //cout << ID << " at (" << x << ", " << y << ")" << endl;
+        queue<point> q;
+        q.push(point(x, y));
+        main[x][y].state = ID;
+        main[x][y].checked = true;
+        while (q.size() > 0)
+        {
+            point p = q.front();
+            q.pop();
+            main[p.x][p.y].state = ID;
+            int dx[] = { -1, 1, 0, 0 };
+            int dy[] = { 0, 0, -1, 1 };
+            for (int i = 0; i < 4; i++)
+            {
+                int rx = p.x + dx[i];
+                int ry = p.y + dy[i];
+                if (rx >= 0 && rx < size && ry >= 0 && ry < size)
+                {
+                    cout << main[rx][ry].state << endl;
+                    if (!main[rx][ry].walkable)
+                        main[rx][ry].state = -1;
+                    else if (main[rx][ry].state == -10 && !main[rx][ry].checked)
+                    {
+                        main[rx][ry].checked = true;
+                        q.push(point(rx, ry));
+                    }
+                }
+            }
+        }
+    }
+    void setStates() //sets states of all tiles in this map. -10 is undefined, -3 is door, -2 is unrevealed wall, -1 is revealed wall, everything else is walkable space.
+    {
+        int state = 0;
+        for (int i = 0; i < moving.size(); i++)
+        {
+            if (moving[i]->gettype() == 4)
+                main[moving[i]->getx()][moving[i]->gety()].state = -3;
+        }
+        for (int i = 0; i < size; i++)
+            for (int f = 0; f < size; f++)
+                if (!main[i][f].checked)
+                {
+                    if (main[i][f].walkable)
+                    {
+                        collapse(i, f, state);
+                        //cout << "(" << i << ", " << f << ") with " << state << endl;
+                        state++;
+                    }
+                    else
+                    {
+                        if (main[i][f].state == -10)
+                        main[i][f].state = -2;
+                        main[i][f].checked = true;
+                    }
+                }
+    }
     void fullGen()
     {
         caveGen();
         //for (treasure t : hidden)
         //    cout << t.getName() << ": " << t.getValue() << ", (" << t.x << ", " << t.y << ")" << endl;
+    }
+
+
+    void depthsGen()
+    {
+        caveGen2();
+        for (int i = 0; i < 99; i++)
+            genPath(1, 5, 2, 5, 0, 1, tile());
+
+        for (int i = 0; i < size; i++)
+        {
+            main[0][i] = tile();
+            main[63][i] = tile();
+        }
+        int rx = 0;
+        int ry = 0;
+        for (int i = 0; i < size / 2; i++)
+        {
+            while (!main[rx][ry].walkable)
+            {
+                rx = rand() % size;
+                ry = rand() % size;
+            }
+            bubble* bk = new bubble(rx, ry);
+            addEntity(bk);
+            rx = rand() % size;
+            ry = rand() % size;
+        }
+        for (int i = 0; i < 100; i++)
+        {
+            while (!main[rx][ry].walkable)
+            {
+                rx = rand() % size;
+                ry = rand() % size;
+            }
+            tile tr1 = tile("!!");
+            tr1.tr = true;
+            bubble* bk = new bubble(rx, ry);
+            addTreasure(treasure(rx, ry));
+            main[rx][ry] = tr1;
+            rx = rand() % size;
+            ry = rand() % size;
+        }
     }
 
     vector<tile>& operator[](int i)
@@ -375,6 +531,64 @@ public:
         for (int i = 0; i < main.size() + 2; i++)
             cout << "▒▒";
         cout << endl;
+    }
+    void printStates()
+    {
+        cout << endl;
+        for (int i = 0; i < size; i++)
+        {
+            for (int f = 0; f < size; f++)
+            {
+                tile t = main[i][f];
+                if (t.state == -10)
+                    cout << rgb(0, 0, 0, "██");
+                if (t.state == -3)
+                    cout << rgb(128, 64, 0, "██");
+                if (t.state == -2)
+                    cout << rgb(128, 128, 128, "██");
+                if (t.state == -1)
+                    cout << rgb(255, 255, 255, "██");
+                if (t.state == 0)
+                    cout << rgb(255, 0, 0, "██");
+                if (t.state == 1)
+                    cout << rgb(255, 64, 0, "██");
+                if (t.state == 2)
+                    cout << rgb(255, 128, 0, "██");
+                if (t.state == 3)
+                    cout << rgb(255, 192, 0, "██");
+                if (t.state == 4)
+                    cout << rgb(255, 255, 0, "██");
+                if (t.state == 5)
+                    cout << rgb(192, 255, 0, "██");
+                if (t.state == 6)
+                    cout << rgb(128, 255, 0, "██");
+                if (t.state == 7)
+                    cout << rgb(64, 255, 0, "██");
+                if (t.state == 8)
+                    cout << rgb(0, 255, 0, "██");
+                if (t.state == 9)
+                    cout << rgb(255, 0, 0, "██");
+                if (t.state == 10)
+                    cout << rgb(0, 255, 64, "██");
+                if (t.state == 11)
+                    cout << rgb(0, 255, 128, "██");
+                if (t.state == 12)
+                    cout << rgb(0, 255, 192, "██");
+                if (t.state == 13)
+                    cout << rgb(0, 255, 255, "██");
+                if (t.state == 14)
+                    cout << rgb(0, 192, 255, "██");
+                if (t.state == 15)
+                    cout << rgb(0, 128, 255, "██");
+                if (t.state == 16)
+                    cout << rgb(0, 64, 255, "██");
+                if (t.state == 17)
+                    cout << rgb(0, 0, 255, "██");
+                if (t.state > 17)
+                    cout << rgb(255, 0, 255, "██");
+            }
+            cout << endl;
+        }
     }
 
     void printVisible(double s) //sight radius
@@ -413,7 +627,7 @@ public:
     }
     void start()
     {
-        cout << "start 0" << endl;
+        //cout << "start 0" << endl;
         for (entity* e : moving)
             e->start(this);
     }
@@ -429,14 +643,6 @@ public:
     }
     void interact(double d)
     {
-        tile f("!!");
-        f.tr = true;
-        for (treasure t : hidden)
-            if (dist(X, Y, t.x, t.y) < d && !t.t)
-            {
-                main[t.x][t.y] = f;
-                cout << t.t << " " << X << " " << Y << endl;
-            }
         for (entity* e : moving)
         {
             e->interact();
@@ -461,7 +667,7 @@ public:
     {
         for (int i = 0; i < moving.size(); i++)
         {
-            cout << 1 << endl;
+            //cout << 1 << endl;
             if (moving[i]->getx() == x && moving[i]->gety() == y)
             {
 
@@ -472,6 +678,9 @@ public:
     }
     void addEntity(entity* e)
     {
+        if (e->gettype() == 4 || e->gettype() == 3)
+            if (e->getID() >= trigger.size())
+                trigger.push_back(false);
         moving.push_back(e);
     }
     void addTreasure(treasure t)
@@ -524,27 +733,6 @@ map aworld(num, (int)time(0));
 map bworld(num, 10);
 map sworld(num, (int)time(0));
 
-class bubble : public entity {
-    //private:
-    //    int life;
-public:
-    bubble(int _x, int _y) : entity(_x, _y) { shape = "()"; };
-    void step()
-    {
-        if (x == X && y == Y)
-            if (O2 < maxO2 - 5)
-            {
-                O2 += 5;
-            }
-            else
-                O2 = maxO2;
-    }
-    int gettype()
-    {
-        return 1;
-    }
-    void start(map* m) {}
-};
 
 //class vent : public entity {
 //private: 
@@ -668,19 +856,10 @@ int fancyMod(int x, int y)
     return x % y;
 }
 
-vector<treasure> treasureList;
-
 string scatter[40] = { " ", " ", " ", "⠁", "⡀", "⠂", "⢀", "⠄", "⠈", "⠐", "⠠", "⠃", "⠅", "⠆", "⠊", "⠌",  "⠑", "⠔", "⠘", "⠡", "⠢", "⠨", "⠰", "⡁", "⡂", "⡄", "⡈", "⡐", "⡠", "⢀", "⢁", "⢂", "⢄", "⢈", "⢐", "⢠", "⠒", "⠤", "⠉", "⣀" };
 
 time_t start = time(0);
 
-string rgb(int r, int g, int b, string str)
-{
-    r = max(min(r, 255), 0);
-    g = max(min(g, 255), 0);
-    b = max(min(b, 255), 0);
-    return "\033[0;38;2;" + to_string(r) + ";" + to_string(g) + ";" + to_string(b) + "m" + str + "\033[m";
-}
 string rgbackground(int r, int g, int b, string str)
 {
     r = max(min(r, 255), 0);
@@ -837,6 +1016,7 @@ void UI(int event) // 0 to clear screen
         {
             cout << "YARRGH return to our ship [q] and give us yer treasures !!!" << endl;
         }
+        //cout << sworld[X][Y].state << " " << sworld[X][Y].checked << endl;
     }
     if (event == 4) // roaming, treasure found
     {
@@ -971,6 +1151,7 @@ void moveP(int x, int y)
                 bworld = sworld;
                 sworld = aworld;
                 X = num - 1;
+                cX = num - 5;
                 a = !a;
             }
         }
@@ -1001,7 +1182,8 @@ void subControl(char c)
                 treasureList.push_back(i);
                 sworld.swapT(k);
                 tres = true;
-                sworld[X][Y] = tile("..");
+                sworld[X][Y].shape = "..";
+                sworld[X][Y].tr = false;
             }
         }
     }
@@ -1147,47 +1329,18 @@ int main()
     aworld[3][8] = tr1;
     aworld[3][7] = tr1;
     aworld[3][9] = tr1;
-    bworld.caveGen2();
-    for (int i = 0; i < 99; i++)
-        bworld.genPath(1, 5, 2, 5, 0, 1, tile());
-
+    bworld.depthsGen();
     for (int i = 0; i < num; i++)
     {
-        bworld[0][i] = tile();
         aworld[63][i] = tile();
     }
-    int rx = 0;
-    int ry = 0;
-    for (int i = 0; i < num/2; i++)
-    {
-        while (!bworld[rx][ry].walkable)
-        {
-            rx = rand() % num;
-            ry = rand() % num;
-        }
-        bubble* bk = new bubble(rx, ry);
-        bworld.addEntity(bk);
-        rx = rand() % num;
-        ry = rand() % num;
-    }
-    for (int i = 0; i < 100; i++)
-    {
-        while (!bworld[rx][ry].walkable)
-        {
-            rx = rand() % num;
-            ry = rand() % num;
-        }
-        bubble* bk = new bubble(rx, ry);
-        bworld.addTreasure(treasure(rx, ry));
-        bworld[rx][ry] = tr1;
-        rx = rand() % num;
-        ry = rand() % num;
-    }
+    bworld.setStates();
     sworld = aworld;
-    cout << "e" << endl;
+    //cout << "e" << endl;
     //printWorld();
     Y = 8;
     UI(1);
+    //bworld.printStates();
     //bworld.printAll();
     //cout << sworld.trigger[0];
     while (true)
