@@ -456,12 +456,14 @@ public:
     void setStates() //sets states of all tiles in this map. -10 is undefined, -3 is door, -2 is unrevealed wall, -1 is revealed wall, everything else is walkable space.
     {
         clearStates();
-        int state = 0;
+        int state = 2;
         for (int i = 0; i < moving.size(); i++)
         {
             if (moving[i]->gettype() == 4)
                 main[moving[i]->getx()][moving[i]->gety()].state = -3;
         }
+        collapse(0, 0, 0);
+        collapse(size - 1, 0, 1);
         for (int i = 0; i < size; i++)
             for (int f = 0; f < size; f++)
                 if (!main[i][f].checked && main[i][f].state == -10)
@@ -494,6 +496,21 @@ public:
             {
                 main[i][f].state = -10;
                 main[i][f].checked = false;
+            }
+    }
+
+    void fillInaccessible()
+    {
+        setStates();
+        for (int i = 0; i < size; i++)
+            for (int f = 0; f < size; f++)
+            {
+                if (main[i][f].state > 0)
+                {
+                    main[i][f].walkable = false;
+                    main[i][f].state = -2;
+                    main[i][f].shape = "██";
+                }
             }
     }
 
@@ -537,25 +554,91 @@ public:
         //clearStates();
     }
 
+    int countConnections(int x, int y) // return how many unique non-negative states are next to this tile
+    {
+        int out[] = { -1, -1, -1, -1, 0 };
+        int dx[] = { -1, 1, 0, 0 };
+        int dy[] = { 0, 0, -1, 1 };
+        for (int i = 0; i < 4; i++)
+        {
+            if (x + dx[i] >= 0 && x + dx[i] < size && y + dy[i] >= 0 && y + dy[i] < size)
+            {
+                out[i] = main[x + dx[i]][y + dy[i]].state;
+            }
+        }
+        for (int i = 0; i < 4; i++)
+        {
+            bool eq = false;
+            for (int f = 0; f < i; f++)
+                if (out[f] == out[i])
+                    eq = true;
+            if (out[i] > -1 && !eq)
+                out[4]++;
+        }
+        return out[4];
+    }
+
+    bool clearSplit() //remove a tile that is between two different zones
+    {
+        setStates();
+        //int attempts = 0;
+        //while(attempts < 100)
+        //{
+        //    int rx = 0;
+        //    int ry = 0;
+        //    while (main[rx][ry].state != -2)
+        //    {
+        //        rx = rand() % size;
+        //        ry = rand() % size;
+        //    }
+
+        //    if (countConnections(rx, ry) > 1)
+        //    {
+        //        main[rx][ry].shape = "  ";
+        //        main[rx][ry].state = -10;
+        //        main[rx][ry].walkable = true;
+        //        return;
+        //    }
+        //    attempts++;
+        //}
+        for (int rx = 0; rx < size; rx++)
+            for (int ry = 0; ry < size; ry++)
+                if (countConnections(rx, ry) > 1)
+                {
+                    main[rx][ry].shape = "  ";
+                    main[rx][ry].state = -10;
+                    main[rx][ry].walkable = true;
+                    return true;
+                }
+        return false;
+    }
+
     void depthsGen(int _a, int _b)
     {
-        main = vector<vector<tile>>(size, vector<tile>(size, tile()));
-        caveGen2();
-        for (int i = 0; i < 99; i++)
+        main = vector<vector<tile>>(size, vector<tile>(size, tile())); // reset map
+        trigger = vector<bool>(); //reset triggers
+        moving = vector<entity*>(); //reset entities
+        caveGen2(); // generate caves - step 1
+        for (int i = 0; i < 99; i++) // generate caves - step 2
             genPath(1, 5, 2, 5, 0, 1, tile());
 
-        for (int i = 0; i < size; i++)
+        for (int i = 0; i < size; i++) // generate caves - step 3
         {
             main[0][i] = tile();
             main[63][i] = tile();
         }
+        printStates();
+        while (clearSplit()); //clears all single tile gaps between unique areas
+        printStates();
+        fillInaccessible(); //fill all tiles that cannot be reached due to world gen
+        printStates();
         int r = rand() % 256;
         int g = rand() % 256;
         int b = rand() % 256;
         //setStates();
         //printStates();
         //clearStates();
-        for (int i = 0; i < _a; i++)
+        for (int i = 0; i < _a; i++) // generate basic doors
             genDoor(r, g, b, 0);
         int rx = rand() % size;
         int ry = rand() % size;
@@ -564,11 +647,11 @@ public:
             rx = rand() % size;
             ry = rand() % size;
         }
-        lever* lr = new lever(rx, ry, r, g, b, 0);
+        lever* lr = new lever(rx, ry, r, g, b, 0); // lever for basic doors, always in a 0 region
         r = rand() % 256;
         g = rand() % 256;
         b = rand() % 256;
-        for (int i = 0; i < _b; i++)
+        for (int i = 0; i < _b; i++) // generate random doors
             genDoor(r, g, b, 1);
         //setStates();
         //printStates();
@@ -579,10 +662,10 @@ public:
             rx = rand() % size;
             ry = rand() % size;
         }
-        lever* lr2 = new lever(rx, ry, r, g, b, 1);
+        lever* lr2 = new lever(rx, ry, r, g, b, 1); // lever for random doors
         addEntity(lr2);
         addEntity(lr);
-        for (int i = 0; i < size / 2; i++)
+        for (int i = 0; i < size / 2; i++) // add bubbles
         {
             while (!main[rx][ry].walkable || checkSolid(rx, ry))
             {
@@ -594,7 +677,7 @@ public:
             rx = rand() % size;
             ry = rand() % size;
         }
-        for (int i = 0; i < 100; i++)
+        for (int i = 0; i < 100; i++) // add treasures
         {
             while (!main[rx][ry].walkable || checkSolid(rx, ry))
             {
@@ -603,14 +686,14 @@ public:
             }
             tile tr1 = tile("!!");
             tr1.tr = true;
-            bubble* bk = new bubble(rx, ry);
             addTreasure(treasure(rx, ry));
+            tr1.state = main[rx][ry].state; //does not override state of the tile beneath it
             main[rx][ry] = tr1;
             rx = rand() % size;
             ry = rand() % size;
         }
-        printAll();
-        start();
+        start(); // starts doors and such
+        printAll(); // print map
     }
 
     vector<tile>& operator[](int i)
@@ -645,6 +728,7 @@ public:
     }
     void printStates()
     {
+        setStates();
         cout << endl;
         for (int i = 0; i < size; i++)
         {
@@ -1440,7 +1524,8 @@ int main()
     {
         bworld.printStates();
         cout << "enter anything to continue." << endl;
-        cin >> a;
+        char k;
+        cin >> k;
     }
     for (int i = 0; i < num; i++)
     {
