@@ -613,13 +613,48 @@ public:
         return false;
     }
 
+    int pdist(point a, point b)
+    {
+        int dx = (a.x - b.x) * (a.x - b.x);
+        int dy = (a.y - b.y) * (a.y - b.y);
+        return dx + dy;
+    }
+    bool movePointCloser(point& a, point b)
+    {
+        int dist = pdist(a, b);
+        int dx[] = { -1, 1, 0, 0 };
+        int dy[] = { 0, 0, -1, 1 };
+        for (int i = 0; i < 4; i++)
+        {
+            int nx = a.x + dx[i];
+            int ny = a.x + dy[i];
+            if (nx >= 0 && nx < size && ny >= 0 && ny < size)
+                if (dist > pdist(point(nx, ny), b))
+                {
+                    a = point(nx, ny);
+                    return true;
+                }
+        }
+        return false;
+    }
+
+    void guaranteePath() //not actually, just most the time
+    {
+        point a(0, 0);
+        point b(size - 1, 0);
+        while (movePointCloser(a, b) && movePointCloser(b, a));
+        double dist = sqrt(pdist(a, b));
+        genCircle(a.x + ((a.x - b.x)/2), a.y + ((a.y - b.y)/2), dist/2, 0, 1, tile());
+        clearSplit();
+    }
+
     void depthsGen(int _a, int _b)
     {
         main = vector<vector<tile>>(size, vector<tile>(size, tile())); // reset map
         trigger = vector<bool>(); //reset triggers
         moving = vector<entity*>(); //reset entities
         caveGen2(); // generate caves - step 1
-        for (int i = 0; i < 99; i++) // generate caves - step 2
+        for (int i = 0; i < 50; i++) // generate caves - step 2
             genPath(1, 5, 2, 5, 0, 1, tile());
 
         for (int i = 0; i < size; i++) // generate caves - step 3
@@ -629,6 +664,8 @@ public:
         }
         printStates();
         while (clearSplit()); //clears all single tile gaps between unique areas
+        printStates();
+        guaranteePath(); // if repeated clearSplit() didn't connect the top to the bottom, this will most of the time. other times it'll probably delete half the map ¯\(ツ)/¯
         printStates();
         fillInaccessible(); //fill all tiles that cannot be reached due to world gen
         printStates();
