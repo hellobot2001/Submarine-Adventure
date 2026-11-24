@@ -537,7 +537,7 @@ public:
         //clearStates();
     }
 
-    void depthsGen()
+    void depthsGen(int _a, int _b)
     {
         main = vector<vector<tile>>(size, vector<tile>(size, tile()));
         caveGen2();
@@ -555,7 +555,7 @@ public:
         //setStates();
         //printStates();
         //clearStates();
-        for (int i = 0; i < 15; i++)
+        for (int i = 0; i < _a; i++)
             genDoor(r, g, b, 0);
         int rx = rand() % size;
         int ry = rand() % size;
@@ -568,7 +568,7 @@ public:
         r = rand() % 256;
         g = rand() % 256;
         b = rand() % 256;
-        for (int i = 0; i < 10; i++)
+        for (int i = 0; i < _b; i++)
             genDoor(r, g, b, 1);
         //setStates();
         //printStates();
@@ -1045,7 +1045,7 @@ void UI(int event) // 0 to clear screen
     cout << "\033[2J\033[1;1H";
     if (event == 1) // waiting at dock
     {
-        cout << "press q to descend, e to relocate, or p to quit." << endl;
+        cout << "press q to descend, e to relocate, or p to quit. press b for the super secret bworld entrance for debug purposes only." << endl;
         cout << "you have \033[38;2;255;215;0m" << money << "\033[m doubloons, and you need \033[38;2;255;215;0m" << (quota * quota * quotaMultiplier * swindle) << "\033[m doubloons for your next quota." << endl;
         cout << "the pirates will leave in \033[38;2;200;0;0m" << ct << "\033[m attempt(s)." << endl;
         sworld.printVisible(glass);
@@ -1302,6 +1302,13 @@ void shopControl(char c)
         tutDesc = false;
         subControl(' ');
     }
+    else if (c == 'b')
+    {
+        sub = true;
+        tutDesc = false;
+        subControl(' ');
+        sworld = bworld;
+    }
     else
     {
         if (c == 'e')
@@ -1315,7 +1322,7 @@ void shopControl(char c)
             {
                 restart(1);
             }
-            sworld.fullGen();
+            bworld.depthsGen(15, 12);
         }
         UI(1);
     }
@@ -1421,7 +1428,13 @@ int main()
     {
         srand(time(0));
     }
-    bworld.depthsGen();
+    int a;
+    cout << "how many basic doors? I recommend 15." << endl << "enter a whole number: ";
+    cin >> a;
+    int bb;
+    cout << "how many random doors? I recommend 12." << endl << "enter a whole number: ";
+    cin >> bb;
+    bworld.depthsGen(a, bb);
     for (int i = 0; i < num; i++)
     {
         aworld[63][i] = tile();
